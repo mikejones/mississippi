@@ -5,25 +5,17 @@
         ring.middleware.reload
         ring.util.response)
   (:require [mississippi.core :as miss]
-            [compojure.route :as route]))
+            [compojure.route :as route]
+            [clojure.walk :as walk]))
 
 (defn- emit-json [x & [status]]
   {:headers {"Content-Type" "application/json"}
    :status (or status 200)
    :body (json-str x)})
 
-(defresource Coffee {:coffee [(miss/member-of #{"latte" "drip"})]
-                     :size [(miss/member-of #{"small" "medium" "large"})]
-                     :quantity [miss/required (miss/in-range (range 1 4))]})
-
-(defmacro POST+ [url resource symb & body]
-  `(let [params# (gensym)]
-     (POST ~url
-           {params# :params}
-           (let [~symb (new ~resource params#)]
-             (do ~@body)))))
-
-(macroexpand "/order" Coffee c (println "wah"))
+(miss/defresource Coffee {:coffee [(miss/member-of #{"latte" "drip"})]
+                          :size [(miss/member-of #{"small" "medium" "large"})]
+                          :quantity [miss/required (miss/in-range (range 1 4))]})
 
 (defroutes main-routes
 
@@ -32,14 +24,10 @@
 
   (POST "/orders"
         {params :params}
-        (let [order (Coffee. params)]
-          (if-let [errors (errors order)]
+        (let [order (Coffee. (walk/keywordize-keys params))]
+          (if-let [errors (miss/errors order)]
             (emit-json errors 500)
-            (redirect "/orders/1"))))
-
-  ;; (VPOST "/orders"
-  ;;        order-validations order
-  ;;        (emit-json {:bitches order})))
+            (redirect "/orders/1")))))
 
 (def app (-> #'main-routes
              (wrap-reload '[mississippi.web

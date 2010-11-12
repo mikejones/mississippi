@@ -48,20 +48,15 @@
   (nil? (o :errors)))
 
 (defprotocol Validatable
-  (is-valid? [_]))
+  (errors [_]))
 
 (defmacro defresource [name & [fields-and-validations]]
-  `(defrecord ~name ~(map (comp #'symbol #'name first)
-                          fields-and-validations)
+  `(defrecord ~name [~'fields]
      Validatable
-     (is-valid? [this#]
-                (validate this# ~fields-and-validations))))
-
-;; (macroexpand-1 '(defresource Foo { :a [missisippi.core/numeric] :b [] }))
-;; (defresource Foo {:a [(mississippi.core/)]
-;;                   :b [mississippi.core/required]})
-;; (def f (Foo. "a" nil))
-;; (is-valid? f)
+     (errors [_]
+             (let [v# (validate ~'fields ~fields-and-validations)]
+               (if (:errors v#)
+                 v#)))))
 
 
 
