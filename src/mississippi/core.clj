@@ -40,8 +40,10 @@
 
 (defn validate
   [subject validations]
-  (reduce (fn [acc [attr func]]
-            (reduce (fn [acc2 f] (f acc2 attr)) acc func))
+  (reduce (fn [acc [attr v-funcs]]
+            (reduce (fn [acc2 v-func] (v-func acc2 attr))
+                    acc
+                    v-funcs))
           subject validations))
 
 (defprotocol Validatable
@@ -53,7 +55,7 @@
      Validatable
      (errors [_]
              (let [v# (validate ~'fields ~fields-and-validations)]
-               (if (:errors v#)
+               (if (v# :errors)
                  v#)))
      (valid? [~'this]
              (empty? (errors ~'this)))))
