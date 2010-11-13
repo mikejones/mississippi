@@ -44,11 +44,9 @@
             (reduce (fn [acc2 f] (f acc2 attr)) acc func))
           subject validations))
 
-(defn valid? [o]
-  (nil? (o :errors)))
-
 (defprotocol Validatable
-  (errors [_]))
+  (errors [_])
+  (valid? [_]))
 
 (defmacro defresource [name & [fields-and-validations]]
   `(defrecord ~name [~'fields]
@@ -56,7 +54,9 @@
      (errors [_]
              (let [v# (validate ~'fields ~fields-and-validations)]
                (if (:errors v#)
-                 v#)))))
+                 v#)))
+     (valid? [~'this]
+             (empty? (errors ~'this)))))
 
 
 
