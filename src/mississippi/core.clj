@@ -48,7 +48,7 @@
 
 (defn valid?
   [resource]
-  (empty? (:errors resouce)))
+  (empty? (:errors resource)))
 
 (defprotocol Validatable
   (errors [_])
