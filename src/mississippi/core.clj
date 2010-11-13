@@ -46,6 +46,10 @@
                     v-funcs))
           subject validations))
 
+(defn valid?
+  [resource]
+  (empty? (:errors resouce)))
+
 (defprotocol Validatable
   (errors [_])
   (valid? [_]))
