@@ -15,3 +15,14 @@ FIXME: write
 Copyright (C) 2010 FIXME
 
 Distributed under the Eclipse Public License, the same as Clojure.
+
+# todo
+- Implement nested validations
+{ :foo { :bar [validations] }}
+
+- Override error messages
+
+- Validate vectors in a more generic way (maybe) 
+
+
+

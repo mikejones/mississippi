@@ -50,19 +50,19 @@
   [resource]
   (empty? (:errors resource)))
 
-(defprotocol Validatable
-  (errors [_])
-  (valid? [_]))
+;; (defprotocol Validatable
+;;   (errors [_])
+;;   (valid? [_]))
 
-(defmacro defresource [name & [fields-and-validations]]
-  `(defrecord ~name [~'fields]
-     Validatable
-     (errors [_]
-             (let [v# (validate ~'fields ~fields-and-validations)]
-               (if (v# :errors)
-                 v#)))
-     (valid? [~'this]
-             (empty? (errors ~'this)))))
+;; (defmacro defresource [name & [fields-and-validations]]
+;;   `(defrecord ~name [~'fields]
+;;      Validatable
+;;      (errors [_]
+;;              (let [v# (validate ~'fields ~fields-and-validations)]
+;;                (if (v# :errors)
+;;                  v#)))
+;;      (valid? [~'this]
+;;              (empty? (errors ~'this)))))
 
 
 
