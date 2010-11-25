@@ -10,8 +10,9 @@
                      [ring/ring-jetty-adapter "0.3.1"]
                      [ring/ring-devel "0.3.1"]
                      [lein-run "1.0.0"]
-                     [lein-clojars "0.5-SNAPSHOT"]]
-
-  :run-aliases {:server [mississippi.web start-server]}
-  :repositories [["clojars" "http://clojars.org/repo"]])
+;;                      [lein-clojars "0.5-SNAPSHOT"]
+                     [swank-clojure "1.2.1"]]
+;;   :run-aliases {:server [mississippi.web start-server]}
+;;   :repositories [["clojars" "http://clojars.org/repo"]]
+  )
 
