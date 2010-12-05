@@ -56,3 +56,9 @@
   (let [o { :a { :b { :c nil}}}
         r (validate o {[:a :b :c] [required]})]
     (is (false? (valid? r)))))
+
+(deftest custom-error-messages
+  (let [o {:a nil}
+        r (validate o {:a [(required-with "its done busted fool")]})]
+    (is (= {:a ["its done busted fool"]}
+           (:errors r)))))

@@ -12,32 +12,38 @@
     (catch NumberFormatException e
       nil)))
 
-(defn required [subject attr]
-  (if (get-in subject attr)
-    subject
-    (add-error subject attr "required")))
+(defn #^{:validation true} required
+  ([subject attr]
+     (required subject attr "required"))
+  ([subject attr message]
+     (if (get-in subject attr)
+       subject
+       (add-error subject attr message))))
 
-(defn numeric [subject attr]
-  (if-let [val (safe-parse-int (get-in subject attr))]
-    (assoc-in subject attr val)
-    (add-error subject attr "non numeric")))
+(defn #^{:validation true} numeric
+  ([subject attr] (numeric subject attr "non numeric"))
+  ([subject attr message]
+     (if-let [val (safe-parse-int (get-in subject attr))]
+       (assoc-in subject attr val)
+       (add-error subject attr message))))
 
-(defn member-of
-  [lat]
-  (fn [subject attr]
-    (if (contains? lat (get-in subject attr))
-      subject
-      (add-error subject
-                 attr
-                 (format "is not a member of %s"
-                         (apply str
-                                (interpose ", " lat)))))))
+(defn #^{:validation true} member-of
+  ([lat] (member-of lat (format "is not a member of %s"
+                                (apply str
+                                       (interpose ", " lat)))))
+  ([lat message]
+     (fn [subject attr]
+       (if (contains? lat (get-in subject attr))
+         subject
+         (add-error subject attr message)))))
 
-(defn in-range
-  [r]
-  (fn [subject attr]
-    (-> (numeric subject attr) 
-        ((member-of (set r)) attr))))
+(defn #^{:validation true} in-range
+  ([r] (in-range r nil))
+  ([r message]
+     (fn [subject attr]
+       (if message
+         ((member-of (set r) message) (numeric subject attr) attr)
+         ((member-of (set r)) (numeric subject attr) attr)))))
 
 (defn validate-attr [subject [attr v-funcs]]
   (reduce (fn [s vf] (vf s (if (vector? attr) attr [attr])))
@@ -52,3 +58,18 @@
   [resource]
   (empty? (:errors resource)))
 
+(filter (fn [[_ v]] (:validation (meta v)))
+        (ns-publics 'mississippi.core))
+
+(defn generate-with-message-for [[s v]]
+  (let [n (symbol (str s "-with"))]
+    `(defn ~n [message#]
+       (fn [subject# attr#]
+         (~s subject# attr# message#)))))
+
+(defmacro generate-with-messages []
+  `(do ~@(map generate-with-message-for
+              (filter (fn [[_ v]] (:validation (meta v)))
+                      (ns-publics 'mississippi.core)))))
+
+(generate-with-messages)
