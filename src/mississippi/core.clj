@@ -2,8 +2,9 @@
   (:require [clojure.walk :as walk]))
 
 (defn add-error [subject attr error]
-  (assoc-in subject [:errors attr]
-            (conj (get-in subject [:errors attr] []) error)))
+  (let [attr-path (apply vector :errors attr)]
+    (assoc-in subject attr-path
+              (conj (get-in subject attr-path []) error))))
 
 (defn safe-parse-int [s]
   (try
@@ -12,19 +13,19 @@
       nil)))
 
 (defn required [subject attr]
-  (if (attr subject)
+  (if (get-in subject attr)
     subject
     (add-error subject attr "required")))
 
 (defn numeric [subject attr]
-  (if-let [val (safe-parse-int (attr subject))]
-    (assoc subject attr val)
+  (if-let [val (safe-parse-int (get-in subject attr))]
+    (assoc-in subject attr val)
     (add-error subject attr "non numeric")))
 
 (defn member-of
   [lat]
   (fn [subject attr]
-    (if (contains? lat (attr subject))
+    (if (contains? lat (get-in subject attr))
       subject
       (add-error subject
                  attr
@@ -38,31 +39,16 @@
     (-> (numeric subject attr) 
         ((member-of (set r)) attr))))
 
+(defn validate-attr [subject [attr v-funcs]]
+  (reduce (fn [s vf] (vf s (if (vector? attr) attr [attr])))
+          subject
+          v-funcs))
+
 (defn validate
   [subject validations]
-  (reduce (fn [acc [attr v-funcs]]
-            (reduce (fn [acc2 v-func] (v-func acc2 attr))
-                    acc
-                    v-funcs))
-          subject validations))
+  (reduce validate-attr subject validations))
 
 (defn valid?
   [resource]
   (empty? (:errors resource)))
-
-;; (defprotocol Validatable
-;;   (errors [_])
-;;   (valid? [_]))
-
-;; (defmacro defresource [name & [fields-and-validations]]
-;;   `(defrecord ~name [~'fields]
-;;      Validatable
-;;      (errors [_]
-;;              (let [v# (validate ~'fields ~fields-and-validations)]
-;;                (if (v# :errors)
-;;                  v#)))
-;;      (valid? [~'this]
-;;              (empty? (errors ~'this)))))
-
-
 

@@ -23,8 +23,6 @@
     (is (= {:a ["is not a member of a, b, c"]}
            (:errors r)))))
 
-;; (defresource Range { :a [(in-range (range 2 4))]})
-
 (testing "attributes in a range" 
   (deftest outside-of-range
     (let [r (validate { :a 5 }
@@ -44,3 +42,17 @@
                     {:a [required (member-of #{"a" "b" })] })]
     (is (= {:a ["required" "is not a member of a, b"]}
            (:errors r)))))
+
+(deftest multiple-nested-validations
+  (let [o { :a { :b { :c nil :d "1" :e nil}}}
+        r (validate o {[:a :b :c] [required]
+                       [:a :b :d] [required numeric]
+                       [:a :b :e] [required]})]
+    (is (false? (valid? r)))
+    (is (= {:a {:b {:c ["required"] :e ["required"]}}}
+           (:errors r)))))
+
+(deftest validating-nested-attributes
+  (let [o { :a { :b { :c nil}}}
+        r (validate o {[:a :b :c] [required]})]
+    (is (false? (valid? r)))))
