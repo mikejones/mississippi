@@ -1,52 +1,61 @@
 (ns mississippi.core
   (:require [clojure.walk :as walk]))
 
-(defn add-error [subject attr error]
-  (let [attr-path (apply vector :errors attr)]
-    (assoc-in subject attr-path
-              (conj (get-in subject attr-path []) error))))
-
-(defn safe-parse-int [s]
-  (try
-    (Integer. s)
-    (catch NumberFormatException e
-      nil)))
-
 (defn required [subject attr]
-  (if (get-in subject attr)
-    subject
-    (add-error subject attr "required")))
+  (if-not (get-in subject attr)
+    "required"))
 
 (defn numeric [subject attr]
-  (if-let [val (safe-parse-int (get-in subject attr))]
-    (assoc-in subject attr val)
-    (add-error subject attr "non numeric")))
+  (if-not (instance? Number (get-in subject attr))
+    "non numeric"))
 
 (defn member-of
   [lat]
   (fn [subject attr]
-    (if (contains? lat (get-in subject attr))
-      subject
-      (add-error subject
-                 attr
-                 (format "is not a member of %s"
-                         (apply str
-                                (interpose ", " lat)))))))
+    (if-not (contains? lat
+                       (get-in subject attr))
+      (format "is not a member of %s"
+              (apply str
+                     (interpose ", " lat))))))
 
 (defn in-range
   [r]
   (fn [subject attr]
-    (-> (numeric subject attr) 
-        ((member-of (set r)) attr))))
+    (map #(% subject attr)
+         [numeric (member-of (set r))])))
 
-(defn validate-attr [subject [attr v-funcs]]
-  (reduce (fn [s vf] (vf s (if (vector? attr) attr [attr])))
-          subject
-          v-funcs))
+(defn attr-errors
+  [subject attr v-funcs]
+  (remove nil?
+          (flatten (map #(% subject attr)
+                        v-funcs))))
+
+(defn errors
+  [subject validations]
+  (reduce (fn [errors [attr v-funcs]]
+            (let [attr-errors (attr-errors subject attr v-funcs)]
+              (if(empty? attr-errors)
+                errors
+                (assoc-in errors attr attr-errors))))
+          {}
+          validations))
+
+(defn flatten-keys* [a ks m]
+  (if (map? m)
+    (reduce into
+            (map (fn [[k v]]
+                   (flatten-keys* a (conj ks k) v))
+                 (seq m)))
+    (assoc a ks m)))
+
+(defn flatten-keys
+  [m]
+  (flatten-keys* {} [] m))
 
 (defn validate
   [subject validations]
-  (reduce validate-attr subject validations))
+  (assoc subject :errors
+         (errors subject (flatten-keys validations))))
 
 (defn valid?
   [resource]

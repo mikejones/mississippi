@@ -44,10 +44,10 @@
            (:errors r)))))
 
 (deftest multiple-nested-validations
-  (let [o { :a { :b { :c nil :d "1" :e nil}}}
-        r (validate o {[:a :b :c] [required]
-                       [:a :b :d] [required numeric]
-                       [:a :b :e] [required]})]
+  (let [o { :a { :b { :c nil :d 1 :e nil}}}
+        r (validate o {:a {:b {:c [required]
+                               :d [required numeric]
+                               :e [required]}}})]
     (is (false? (valid? r)))
     (is (= {:a {:b {:c ["required"] :e ["required"]}}}
            (:errors r)))))
