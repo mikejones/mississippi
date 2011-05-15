@@ -64,7 +64,6 @@
         (is (= '("custom message") 
                (get-in r [:errors :a]))))))
 
-
 (testing "member of validaiton"
   (deftest is-not-valid-when-value-not-in-list
     (is (not (valid? (validate {:a "d"}
