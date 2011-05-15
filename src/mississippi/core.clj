@@ -83,6 +83,21 @@
                                                 (first r)
                                                 (last r)))})])))))
 
+(defn matches
+  "Validates that the attribute matches a specified format
+   m - regular expression to match agains
+
+   The following options are available:
+     :message
+       Override the default message"
+  ([m]
+     (matches m {}))
+  ([m {:keys [message] :or {message "does to match format"}}]
+     (fn [subject attr]
+       (if-not (re-find m
+                        (str (get-in subject attr)))
+         message))))
+
 (defn flatten-keys* [a ks m]
   (if (map? m)
     (reduce into

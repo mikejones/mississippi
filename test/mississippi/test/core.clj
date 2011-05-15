@@ -39,6 +39,18 @@
       (is (= '("custom message") 
              (get-in r [:errors :a]))))))
 
+(testing "matches regular expression validation"
+  (deftest adds-error-when-attribut-does-not-match-regex
+    (is (false? (valid? (validate {:a "something1"}
+                                  {:a [(matches #"(?i)\b[A-Z]+\b")]}))))
+    (is (valid? (validate {:a "something"}
+                          {:a [(matches #"(?i)[A-Z]+")]})))
+    (deftest error-message-is-cumtomisable
+      (let [r (validate {:a nil}
+                        {:a [(matches #"(?i)[A-Z]+" {:message "custom message"})]})]
+      (is (= '("custom message") 
+             (get-in r [:errors :a])))))))
+
 
 (testing "member of validaiton"
   (deftest is-not-valid-when-value-not-in-list
