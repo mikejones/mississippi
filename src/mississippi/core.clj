@@ -1,28 +1,77 @@
 (ns mississippi.core
   (:require [clojure.walk :as walk]))
 
-(defn required [subject attr]
-  (if-not (get-in subject attr)
-    "required"))
+(defn required
+  "Validates that the specified attr is not blank.
 
-(defn numeric [subject attr]
-  (if-not (instance? Number (get-in subject attr))
-    "non numeric"))
+   The following options are avaliable:
+     :message
+       Override the default message"
+  ([subject attr]
+     ((required {}) subject attr))
+  ([{:keys [message] :or {message "required"}}]
+     (fn [subject attr]
+       (if-not (get-in subject attr)
+         message))))
+
+(defn numeric
+  "Validates that the attribute is an instance of Number
+
+   The following options are available:
+     :message
+       Override the default message"
+  ([subject attr]
+     ((numeric {}) subject attr))
+  
+  ([{:keys [message] :or {message "non numeric"}}]
+     (fn [subject attr]
+       (if-not (instance? Number
+                          (get-in subject attr))
+         message))))
+
+(defn- to-sentence
+  [lat]
+  (apply str
+         (cond (= (count lat) 1) lat 
+               (= (count lat) 2) [(first lat) " or " (second lat)]
+               :else (loop [coll lat, acc []]
+                       (cond (empty? coll) acc
+                             (= (count coll) 2) (conj acc
+                                                      (first coll) " or " (second coll))
+                             :else (recur (rest coll)
+                                          (conj acc
+                                                (first coll) ", ")))))))
 
 (defn member-of
-  [lat]
-  (fn [subject attr]
-    (if-not (contains? lat
-                       (get-in subject attr))
-      (format "is not a member of %s"
-              (apply str
-                     (interpose ", " lat))))))
+  "Validates that the attribute is a member is contained in a list.
+
+   The following options are available:
+     :message
+       Override the default message"
+
+  ([lat]
+     (member-of lat {}))
+  ([lat {:keys [message]}]
+     (fn [subject attr]
+       (if-not (some #{(get-in subject attr)}
+                     lat)
+         (or message
+             (format "is not a member of %s"
+                     (to-sentence lat)))))))
 
 (defn in-range
-  [r]
-  (fn [subject attr]
-    (map #(% subject attr)
-         [numeric (member-of (set r))])))
+  ([start end]
+     (in-range start end {}))
+  ([start end {:keys [message]}]
+     (let [r (range start end)]
+       (fn [subject attr]
+         (map #(% subject attr)
+              [numeric
+               (member-of r 
+                          {:message (or message
+                                        (format "does not fall between %s and %s"
+                                                (first r)
+                                                (last r)))})])))))
 
 (defn attr-errors
   [subject attr v-funcs]

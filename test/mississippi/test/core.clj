@@ -2,45 +2,90 @@
   (:use [mississippi.core] :reload)
   (:use [clojure.test]))
 
-(deftest required-attrs
-  (let [r (validate { :a nil }
-                    { :a [required] })]
-    (is (false? (valid? r )))
-    (is (=  {:a ["required"]} 
-            (:errors r)))))
+(testing "required validation"
+  (deftest checks-for-required-attributes
+    (let [r (validate { :a nil }
+                      { :a [required] })]
+      (is (false? (valid? r )))
+      (is (=  {:a ["required"]} 
+              (:errors r)))))
 
-(deftest numeric-attrs
-  (let [r (validate { :a "not a number" }
-                    { :a [numeric]})]
-    (is (false? (valid? r)))
-    (is (= {:a ["non numeric"]}
-           (:errors r)))))
+  (deftest is-valid-when-the-attribute-is-present
+    (is (valid? (validate {:a :a}
+                          {:a [required]}))))
+  
+  (deftest error-message-is-customisable
+    (let [r (validate {:a nil}
+                      {:a [(required {:message "custom message"})]})]
+      (is (= '("custom message") 
+             (get-in r [:errors :a]))))))
 
-(deftest member-attrs
-  (let [r (validate { :a "d" }
-                    { :a [(member-of #{"a" "b" "c"})]})]
-    (is (false? (valid? r)))
-    (is (= {:a ["is not a member of a, b, c"]}
-           (:errors r)))))
+(testing "numeric validation"
+  (deftest add-error-for-non-number-tpypes
+    (let [r (validate {:a "not a number"}
+                      {:a [numeric]})]
+      (is (false? (valid? r)))
+      (is (= ["non numeric"]
+             (get-in r [:errors :a] )))))
+  (deftest valid-types
+    (is (valid? (validate {:a 9}
+                          {:a [numeric]})))
+    (is (valid? (validate {:a 9.0}
+                          {:a [numeric]}))))
+  
+  (deftest error-message-is-customisable
+    (let [r (validate {:a nil}
+                      {:a [(numeric {:message "custom message"})]})]
+      (is (= '("custom message") 
+             (get-in r [:errors :a]))))))
+
+
+(testing "member of validaiton"
+  (deftest is-not-valid-when-value-not-in-list
+    (is (not (valid? (validate {:a "d"}
+                               {:a [(member-of ["a" "b"])]})))))
+  
+  (deftest is-valid-when-value-is-in-list
+    (is (valid? (validate {:a "a"}
+                          {:a [(member-of ["a" "b"])]}))))
+  
+  (deftest default-message-should-list-valid-values
+    (let [r (validate {:a "a"}
+                      {:a [(member-of {:lat ["a" "b"]})]})]
+     (is "is not a member of a or b"
+         (get-in r [:errors :a]))))
+
+  (deftest error-message-is-cumtomisable
+    (let [r (validate {:a nil}
+                      {:a [(member-of ["a"] { :message "custom message"})]})]
+      (is (= '("custom message") 
+             (get-in r [:errors :a]))))))
 
 (testing "attributes in a range" 
   (deftest outside-of-range
-    (let [r (validate { :a 5 }
-                      { :a [(in-range (range 2 4))]})]
+    (let [r (validate { :a 11 }
+                      { :a [(in-range 1 10)]})]
       (is (false? (valid? r)))
-      (is (= {:a ["is not a member of 2, 3"]}
-             (:errors r)))))
+      (is (= '("does not fall between 1 and 9")
+             (get-in r [:errors :a])))))
+  
   (deftest non-numeric
-    (let [r (validate { :a "fail" }
-                      { :a [(in-range (range 2 4))]})]
+    (let [r (validate {:a "fail" }
+                      {:a [(in-range 1 10)]})]
       (is (false? (valid? r)))
-      (is (= {:a ["non numeric", "is not a member of 2, 3"]}
-             (:errors r))))))
+      (is (= ["non numeric", "does not fall between 1 and 9"]
+               (get-in r [:errors :a])))))
+  
+  (deftest error-message-is-cumtomisable
+    (let [r (validate {:a 12}
+                      {:a [(in-range 1 10 { :message "custom message"})]})]
+      (is (= '("custom message") 
+             (get-in r [:errors :a]))))))
 
 (deftest multiple-validations
   (let [r (validate {:a nil}
-                    {:a [required (member-of #{"a" "b" })] })]
-    (is (= {:a ["required" "is not a member of a, b"]}
+                    {:a [required numeric] })]
+    (is (= {:a ["required" "non numeric"]}
            (:errors r)))))
 
 (deftest multiple-nested-validations
