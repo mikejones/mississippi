@@ -98,6 +98,19 @@
                         (str (get-in subject attr)))
          message))))
 
+(defn matches-email
+  "Validates that the attribute matches as an email address
+   (see http://www.regular-expressions.info/email.html for limitations)
+
+   The following options are available:
+     :message
+       Override the default message"
+  ([subject attr]
+     ((matches-email {}) subject attr))
+  ([{:keys [message] :or {message "invalid email address"}}]
+     (matches #"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}\b"
+              {:message message})))
+
 (defn flatten-keys* [a ks m]
   (if (map? m)
     (reduce into

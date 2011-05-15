@@ -51,6 +51,19 @@
       (is (= '("custom message") 
              (get-in r [:errors :a])))))))
 
+(testing "email validation"
+  (deftest adds-error-when-attribut-does-not-match-regex
+    (is (false? (valid? (validate {:a "not-an-email-address"}
+                                  {:a [matches-email]}))))
+    (is (valid? (validate {:a "mail@michaeljon.es"}
+                          {:a [matches-email]}))))
+  
+  (deftest error-message-is-cumtomisable
+      (let [r (validate {:a nil}
+                        {:a [(matches-email {:message "custom message"})]})]
+        (is (= '("custom message") 
+               (get-in r [:errors :a]))))))
+
 
 (testing "member of validaiton"
   (deftest is-not-valid-when-value-not-in-list
