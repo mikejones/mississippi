@@ -110,6 +110,26 @@
   [m]
   (flatten-keys* {} [] m))
 
+(defn- attr-errors
+  [subject attr v-funcs]
+  (remove nil?
+          (flatten (map #(% subject attr)
+                        v-funcs))))
+
+(defn errors
+  "Return the errors from applying the validations to the subject
+
+   subject    - a map of values
+   validation - a map of validations to apply"
+  [subject validations]
+  (reduce (fn [errors [attr v-funcs]]
+            (let [attr-errors (attr-errors subject attr v-funcs)]
+              (if(empty? attr-errors)
+                errors
+                (assoc-in errors attr attr-errors))))
+          {}
+          validations))
+
 (defn validate
   "Apply validations to a map.
 
