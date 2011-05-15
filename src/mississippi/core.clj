@@ -45,6 +45,8 @@
 (defn member-of
   "Validates that the attribute is a member is contained in a list.
 
+   lat - a list of valid values
+
    The following options are available:
      :message
        Override the default message"
@@ -60,6 +62,14 @@
                      (to-sentence lat)))))))
 
 (defn in-range
+  "Validates that an attribute is numeric and falls within a range.
+
+   start - the start of the range
+   end   - the end of the range
+
+   The following options are available:
+     :message
+       Override the default message"
   ([start end]
      (in-range start end {}))
   ([start end {:keys [message]}]
@@ -72,22 +82,6 @@
                                         (format "does not fall between %s and %s"
                                                 (first r)
                                                 (last r)))})])))))
-
-(defn attr-errors
-  [subject attr v-funcs]
-  (remove nil?
-          (flatten (map #(% subject attr)
-                        v-funcs))))
-
-(defn errors
-  [subject validations]
-  (reduce (fn [errors [attr v-funcs]]
-            (let [attr-errors (attr-errors subject attr v-funcs)]
-              (if(empty? attr-errors)
-                errors
-                (assoc-in errors attr attr-errors))))
-          {}
-          validations))
 
 (defn flatten-keys* [a ks m]
   (if (map? m)
@@ -102,11 +96,16 @@
   (flatten-keys* {} [] m))
 
 (defn validate
+  "Apply validations to a map.
+
+   subject     - a map of values to be validated
+   validations - a map of validations to check the subject against"
   [subject validations]
   (assoc subject :errors
          (errors subject (flatten-keys validations))))
 
 (defn valid?
+  "Checks if the map contains any errors"
   [resource]
   (empty? (:errors resource)))
 
