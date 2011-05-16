@@ -31,16 +31,10 @@
 
 (defn- to-sentence
   [lat]
-  (apply str
-         (cond (= (count lat) 1) lat 
-               (= (count lat) 2) [(first lat) " or " (second lat)]
-               :else (loop [coll lat, acc []]
-                       (cond (empty? coll) acc
-                             (= (count coll) 2) (conj acc
-                                                      (first coll) " or " (second coll))
-                             :else (recur (rest coll)
-                                          (conj acc
-                                                (first coll) ", ")))))))
+  (let [to-csv (fn [x] (apply str (interpose ", " x)))]
+    (if (< (count lat) 2)
+      (to-csv lat)
+      (str (to-csv (butlast lat)) " or " (last lat)))))
 
 (defn member-of
   "Validates that the attribute is a member is contained in a list.
