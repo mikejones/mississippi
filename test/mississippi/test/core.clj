@@ -32,6 +32,12 @@
                              {:a [(not-blank {:message "custom message"})]})
                    [:errors :a])))))
 
+(deftest sequence-only-contains-values-in-set
+  (is (false? (valid? (validate {:a [:a :b :c]}
+                                {:a [(contains-only #{:a :b})]}))))
+  (is (valid? (validate {:a [:a :b]}
+                        {:a [(contains-only #{:a :b :c})]}))))
+
 (testing "numeric validation"
   (deftest add-error-for-non-number-tpypes
     (let [r (validate {:a "not a number"}

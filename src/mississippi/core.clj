@@ -1,5 +1,6 @@
 (ns mississippi.core
-  (:use [clojure.contrib.string :only (blank?)])
+  (:use [clojure.contrib.string :only (blank?)]
+        [clojure.set :only (difference)])
   (:require [clojure.walk :as walk]))
 
 (defn required
@@ -69,6 +70,15 @@
          (or message
              (format "is not a member of %s"
                      (to-sentence lat)))))))
+
+(defn contains-only
+  "Validates attr contains only keys in set lat. Value sequence will be coerced into a set."
+  ([lat]
+     (contains-only lat {}))
+  ([lat {:keys [message] :or {message "unexpected key"}}]
+     (fn [subject attr]
+       (if-not (empty? (difference (set (get-in subject attr)) lat))
+         message))))
 
 (defn in-range
   "Validates that an attribute is numeric and falls within a range.
