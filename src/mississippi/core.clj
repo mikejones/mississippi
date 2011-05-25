@@ -1,4 +1,5 @@
 (ns mississippi.core
+  (:use [clojure.contrib.string :only (blank?)])
   (:require [clojure.walk :as walk]))
 
 (defn required
@@ -13,6 +14,20 @@
      (fn [subject attr]
        (if-not (get-in subject attr)
          message))))
+
+(defn predicate
+  "Validates using supplied predicate function pred. Marks attr as invalid if predicate returns true." 
+  [pred {:keys [message]}]
+  (letfn [(apply-pred [message subject attr]
+                      (if (pred (get-in subject attr))
+                        message))]
+    (fn ([subject attr]
+          (apply-pred message subject attr))
+      ([{:keys [message]}]
+         (fn [subject attr]
+           (apply-pred message subject attr))))))
+
+(def not-blank (predicate blank? {:message "blank"}))
 
 (defn numeric
   "Validates that the attribute is an instance of Number

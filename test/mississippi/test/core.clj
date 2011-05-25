@@ -20,6 +20,18 @@
       (is (= '("custom message") 
              (get-in r [:errors :a]))))))
 
+(testing "blank validation"
+  (deftest invalid-when-empty-string
+    (let [r (validate {:a ""} {:a [not-blank]})]
+      (is (false? (valid? r)))
+      (is (= '("blank")
+             (get-in r [:errors :a]))))
+    (is (valid? (validate {:a "test"} {:a [not-blank]})))
+    (is (= '("custom message")
+           (get-in (validate {:a ""}
+                             {:a [(not-blank {:message "custom message"})]})
+                   [:errors :a])))))
+
 (testing "numeric validation"
   (deftest add-error-for-non-number-tpypes
     (let [r (validate {:a "not a number"}
