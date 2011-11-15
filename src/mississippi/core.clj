@@ -1,5 +1,5 @@
 (ns mississippi.core
-  (:use [clojure.contrib.string :only (blank?)]
+  (:use [clojure.string :only (blank?)]
         [clojure.set :only (difference)])
   (:require [clojure.walk :as walk]))
 
