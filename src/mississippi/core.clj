@@ -142,17 +142,15 @@
       (for [validation validations]
         (validation subject attr)))))
 
-(defn flatten-keys* [a ks m]
-  (if (map? m)
-    (reduce into
-            (map (fn [[k v]]
-                   (flatten-keys* a (conj ks k) v))
-                 (seq m)))
-    (assoc a ks m)))
-
 (defn flatten-keys
-  [m]
-  (flatten-keys* {} [] m))
+  ([m] (flatten-keys {} [] m))
+  ([a ks m]
+     (if (map? m)
+       (reduce into
+               (map (fn [[k v]]
+                      (flatten-keys a (conj ks k) v))
+                    (seq m)))
+       (assoc a ks m))))
 
 (defn- attr-errors
   [subject attr v-funcs]
