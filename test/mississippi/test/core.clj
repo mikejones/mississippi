@@ -142,4 +142,20 @@
 (deftest validating-nested-attributes
   (let [o { :a { :b { :c nil}}}
         r (validate o {[:a :b :c] [required]})]
-    (is (false? (valid? r)))))
+    (is (not (valid? r)))))
+
+(testing "validate-if"
+  (let [always-true (fn [s a] true)]
+    (deftest runs-validations
+      (is (valid? (validate {:a :a}
+                            {:a [(validate-if always-true
+                                              required)]})))
+      (is (not (valid? (validate {}
+                                 {:a [(validate-if always-true
+                                                   required)]}))))
+      (is (valid? (validate {:a {:b "value"}}
+                            {:a {:b [(validate-if always-true
+                                                  required)]}})))
+      (is (not (valid? (validate {:a {:b nil}}
+                                 {:a {:b [(validate-if always-true
+                                                       required)]}})))))))

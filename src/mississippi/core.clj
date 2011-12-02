@@ -130,6 +130,18 @@
      (matches #"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}\b"
               {:message message})))
 
+(defn validate-if
+  "Only run validations if the condidtion evaluates to true
+
+   Arguments
+     condition: a fucntion that accepts the subject and attribute and returns a whether or not the validations should be run
+     & validations: validation to run"
+  [condition & validations]
+  (fn [subject attr]
+    (if (condition subject attr)
+      (for [validation validations]
+        (validation subject attr)))))
+
 (defn flatten-keys* [a ks m]
   (if (map? m)
     (reduce into
