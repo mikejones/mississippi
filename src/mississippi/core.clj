@@ -148,7 +148,7 @@
      (if (map? m)
        (reduce into
                (map (fn [[k v]]
-                      (flatten-keys a (conj ks k) v))
+                      (flatten-keys a (if (vector? k) (into ks k) (conj ks k)) v))
                     (seq m)))
        (assoc a ks m))))
 

@@ -139,10 +139,16 @@
     (is (= {:a {:b {:c ["required"] :e ["required"]}}}
            (:errors r)))))
 
-(deftest validating-nested-attributes
-  (let [o { :a { :b { :c nil}}}
-        r (validate o {[:a :b :c] [required]})]
-    (is (not (valid? r)))))
+(testing "nested attributes"
+  (deftest are-not-valid
+    (let [o { :a { :b { :c nil}}}
+          r (validate o {[:a :b :c] [required]})]
+      (is (not (valid? r)))))
+
+  (deftest are-valid
+    (let [o { :a { :b { :c "foo"}}}
+          r (validate o {[:a :b :c] [required]})]
+      (is (valid? r)))))
 
 (testing "validate-if"
   (let [always-true (fn [s a] true)]
