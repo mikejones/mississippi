@@ -48,7 +48,7 @@ with a call to the `with-msg` function:
 You can also provide a function with you want to include the value
 being validated in the error message, for example:
 
-    (with-message required #(str "'" % "'" is required))
+    (with-message valid-email #(str "'" % "' is not a valid email address"))
 
 ## Installation
 
