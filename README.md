@@ -4,7 +4,8 @@ Mississippi provides simple validations for maps.
 
 ## Usage
 
-Validations are provided as functions and described in a map according to the structure of your subject.
+Validations are provided as functions and described in a map according
+to the structure of your subject.
 
     user> (def validations {:a [required not-blank]})
     user> (valid? (validate {:b "b"} validations))
@@ -14,14 +15,34 @@ Validations are provided as functions and described in a map according to the st
 
 Errors are assoc'ed onto the subject and contain further messages.
 
-    user> (validate {:b} validations)
+    user> (validate {:b "b"} validations)
     {:errors {:a ("required" "blank")}}
-    
+
+### Nested attributes
+
+Nested attributes inside the subject map can be validated by either
+building your validation map in the same structure as your subject:
+
+    user> (def subj {:a {:b {:c "foo"}}})
+    user> (def validations {:a {:b {:c [required]}}})
+    user> (valid? (validate subj validations))
+    true
+
+Or by using a vector of keys:
+
+    user> (def subj {:a {:b {:c "foo"}}})
+    user> (def validations {[:a :b :c] [required]})
+    user> (valid? (validate subj validations))
+    true
+
 ### Custom Error Messages
 
-    user> (def validations {:a [(required {:message "must be set"}) not-blank]})
+Custom error messages are defined by wrapping your validation function
+with a call to the `with-msg` function:
+
+    user> (def validations {:a [(with-msg required "must be set") not-blank]})
     #'user/validations
-    user> (validate {:b} validations)
+    user> (validate {:b "b"} validations)
     {:errors {:a ("must be set" "blank")}}
 
 ## Installation
@@ -32,16 +53,11 @@ Mississippi is hosted on [Clojars](http://www.clojars.org).
 
 Add the following to `:dependencies` in your `project.clj`
 
-    [mississippi "0.0.3-SNAPSHOT"]
+    [mississippi "0.1.0"]
 
 ## License
 
-Copyright (C) 2010 FIXME
+Copyright (C) 2010 Michael Jones, Gareth Jones
 
 Distributed under the Eclipse Public License, the same as Clojure.
 
-# TODO
-
-* Implement nested validations: `{ :foo { :bar [validations] }}`
-* Override error messages
-* Validate vectors in a more generic way (maybe) 

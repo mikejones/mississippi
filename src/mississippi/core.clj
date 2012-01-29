@@ -1,49 +1,6 @@
 (ns mississippi.core
   (:use [clojure.string :only (blank?)]
-        [clojure.set :only (difference)])
-  (:require [clojure.walk :as walk]))
-
-(defn required
-  "Validates that the specified attr is not blank.
-
-   The following options are avaliable:
-     :message
-       Override the default message"
-  ([subject attr]
-     ((required {}) subject attr))
-  ([{:keys [message] :or {message "required"}}]
-     (fn [subject attr]
-       (if-not (get-in subject attr)
-         message))))
-
-(defn predicate
-  "Validates using supplied predicate function pred. Marks attr as invalid if predicate returns true." 
-  [pred {:keys [message]}]
-  (letfn [(apply-pred [message subject attr]
-                      (if (pred (get-in subject attr))
-                        message))]
-    (fn ([subject attr]
-          (apply-pred message subject attr))
-      ([{:keys [message]}]
-         (fn [subject attr]
-           (apply-pred message subject attr))))))
-
-(def not-blank (predicate blank? {:message "blank"}))
-
-(defn numeric
-  "Validates that the attribute is an instance of Number
-
-   The following options are available:
-     :message
-       Override the default message"
-  ([subject attr]
-     ((numeric {}) subject attr))
-  
-  ([{:keys [message] :or {message "non numeric"}}]
-     (fn [subject attr]
-       (if-not (instance? Number
-                          (get-in subject attr))
-         message))))
+        [clojure.set :only (difference subset?)]))
 
 (defn- to-sentence
   [lat]
@@ -52,97 +9,80 @@
       (to-csv lat)
       (str (to-csv (butlast lat)) " or " (last lat)))))
 
+(defn with-msg
+  "Wrap a validation function with a custom message.
+
+   f - a validation function
+   msg - either a string or a function, if a function takes a single argument of the value being validated" [f
+   msg]
+  (fn [v]
+    (when (f v)
+      (cond
+       (ifn? msg) (msg v)
+       :else msg))))
+
+(defn required
+  "Validates given value is not nil."
+  [v]
+  (when-not v "required"))
+
+(defn not-blank
+  "Validates given string value is not blank."
+  [v]
+  (when (blank? v) "blank"))
+
+(defn numeric
+  "Validates given value is an instance of Number."
+  [v]
+  (when-not (instance? Number v) "non numeric"))
+
 (defn member-of
-  "Validates that the attribute is a member is contained in a list.
+  "Validates the value v is contained in s (will be coerced to a set)."
+  [s]
+  (fn [v]
+    (when-not (some #{v} (set s))
+      (str "is not a member of " (to-sentence s)))))
 
-   lat - a list of valid values
-
-   The following options are available:
-     :message
-       Override the default message"
-
-  ([lat]
-     (member-of lat {}))
-  ([lat {:keys [message]}]
-     (fn [subject attr]
-       (if-not (some #{(get-in subject attr)}
-                     lat)
-         (or message
-             (format "is not a member of %s"
-                     (to-sentence lat)))))))
-
-(defn contains-only
-  "Validates attr contains only keys in set lat. Value sequence will be coerced into a set."
-  ([lat]
-     (contains-only lat {}))
-  ([lat {:keys [message] :or {message "unexpected key"}}]
-     (fn [subject attr]
-       (if-not (empty? (difference (set (get-in subject attr)) lat))
-         message))))
+(defn subset-of
+  "Validates the value v is a subset of s. Both v and s will be coerced to sets."
+  [s]
+  (fn [v]
+    (when-not (subset? (set v) (set s))
+      (str "not a subset of " (set s)))))
 
 (defn in-range
-  "Validates that an attribute is numeric and falls within a range.
-
-   start - the start of the range
-   end   - the end of the range
-
-   The following options are available:
-     :message
-       Override the default message"
-  ([start end]
-     (in-range start end {}))
-  ([start end {:keys [message]}]
-     (let [r (range start end)]
-       (fn [subject attr]
-         (map #(% subject attr)
-              [numeric
-               (member-of r 
-                          {:message (or message
-                                        (format "does not fall between %s and %s"
-                                                (first r)
-                                                (last r)))})])))))
+  "Validates the value v is both numeric and falls between the range of start and end."
+  [start end]
+  (let [r (range start end)]
+    (fn [v]
+      (let [member-fn (with-msg (member-of (set r))
+                        (str "does not fall between " (first r) " and " (last r)))]
+        [(numeric v)
+         (member-fn v)]))))
 
 (defn matches
-  "Validates that the attribute matches a specified format
-   m - regular expression to match agains
-
-   The following options are available:
-     :message
-       Override the default message"
-  ([m]
-     (matches m {}))
-  ([m {:keys [message] :or {message "does to match format"}}]
-     (fn [subject attr]
-       (if-not (re-find m
-                        (str (get-in subject attr)))
-         message))))
+  "Validates the String value v matches the given Regexp re."
+  [re]
+  (fn [v]
+    (when-not (re-find re (str v))
+      (str "does not match pattern of '" re "'"))))
 
 (defn matches-email
-  "Validates that the attribute matches as an email address
-   (see http://www.regular-expressions.info/email.html for limitations)
-
-   The following options are available:
-     :message
-       Override the default message"
-  ([subject attr]
-     ((matches-email {}) subject attr))
-  ([{:keys [message] :or {message "invalid email address"}}]
-     (matches #"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}\b"
-              {:message message})))
+  "Validates the String value v matches a basic email pattern."
+  [v]
+  ((with-msg (matches #"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}\b")
+     "invalid email address") v))
 
 (defn validate-if
-  "Only run validations if the condidtion evaluates to true
-
-   Arguments
-     condition: a fucntion that accepts the subject and attribute and returns a whether or not the validations should be run
-     & validations: validation to run"
+  "Only run the given validation functions if the condition predicate
+  evaluates to true."
   [condition & validations]
-  (fn [subject attr]
-    (if (condition subject attr)
+  (fn [value]
+    (if (condition value)
       (for [validation validations]
-        (validation subject attr)))))
+        (validation value)))))
 
-(defn flatten-keys
+(defn- flatten-keys
   ([m] (flatten-keys {} [] m))
   ([a ks m]
      (if (map? m)
@@ -153,10 +93,10 @@
        (assoc a ks m))))
 
 (defn- attr-errors
-  [subject attr v-funcs]
-  (remove nil?
-          (flatten (map #(% subject attr)
-                        v-funcs))))
+  [value v-funcs]
+  (->> (map #(%1 %2) v-funcs (repeat value))
+       flatten
+       (remove nil?)))
 
 (defn errors
   "Return the errors from applying the validations to the subject
@@ -165,7 +105,7 @@
    validation - a map of validations to apply"
   [subject validations]
   (reduce (fn [errors [attr v-funcs]]
-            (let [attr-errors (attr-errors subject attr v-funcs)]
+            (let [attr-errors (attr-errors (get-in subject attr) v-funcs)]
               (if(empty? attr-errors)
                 errors
                 (assoc-in errors attr attr-errors))))
@@ -173,13 +113,29 @@
           validations))
 
 (defn validate
-  "Apply validations to a map.
+  "Apply a map of validation functions to a Clojure map.
 
-   subject     - a map of values to be validated
-   validations - a map of validations to check the subject against"
+  Validations should be a map where the key is the attribute in the
+  subject map to be validated, and the value is a sequence of
+  validation functions to apply to the value in the subject map. For
+  example, given a subject of:
+
+  {:a \"some string\"
+   :b 12
+   :c {:d nil}}
+
+  A possible validations map could be:
+
+  {:a [required]
+   :b [required numeric]
+   :c {:d [required]}}
+
+  An alternative syntax for validating nested attributes is to provide the key as a vector:
+
+  {[:c :d] [required]}"
   [subject validations]
-  (assoc subject :errors
-         (errors subject (flatten-keys validations))))
+  (assoc subject
+    :errors (errors subject (flatten-keys validations))))
 
 (defn valid?
   "Checks if the map contains any errors"

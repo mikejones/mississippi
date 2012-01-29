@@ -4,20 +4,20 @@
 
 (testing "required validation"
   (deftest checks-for-required-attributes
-    (let [r (validate { :a nil }
-                      { :a [required] })]
-      (is (false? (valid? r )))
-      (is (=  {:a ["required"]} 
+    (let [r (validate {:a nil}
+                      {:a [required]})]
+      (is (false? (valid? r)))
+      (is (=  {:a ["required"]}
               (:errors r)))))
 
   (deftest is-valid-when-the-attribute-is-present
     (is (valid? (validate {:a :a}
                           {:a [required]}))))
-  
+
   (deftest error-message-is-customisable
     (let [r (validate {:a nil}
-                      {:a [(required {:message "custom message"})]})]
-      (is (= '("custom message") 
+                      {:a [(with-msg required "custom message")]})]
+      (is (= ["custom message"]
              (get-in r [:errors :a]))))))
 
 (testing "blank validation"
@@ -29,14 +29,14 @@
     (is (valid? (validate {:a "test"} {:a [not-blank]})))
     (is (= '("custom message")
            (get-in (validate {:a ""}
-                             {:a [(not-blank {:message "custom message"})]})
+                             {:a [(with-msg not-blank "custom message")]})
                    [:errors :a])))))
 
 (deftest sequence-only-contains-values-in-set
   (is (false? (valid? (validate {:a [:a :b :c]}
-                                {:a [(contains-only #{:a :b})]}))))
+                                {:a [(subset-of #{:a :b})]}))))
   (is (valid? (validate {:a [:a :b]}
-                        {:a [(contains-only #{:a :b :c})]}))))
+                        {:a [(subset-of #{:a :b :c})]}))))
 
 (testing "numeric validation"
   (deftest add-error-for-non-number-tpypes
@@ -50,11 +50,11 @@
                           {:a [numeric]})))
     (is (valid? (validate {:a 9.0}
                           {:a [numeric]}))))
-  
+
   (deftest error-message-is-customisable
     (let [r (validate {:a nil}
-                      {:a [(numeric {:message "custom message"})]})]
-      (is (= '("custom message") 
+                      {:a [(with-msg numeric "custom message")]})]
+      (is (= ["custom message"]
              (get-in r [:errors :a]))))))
 
 (testing "matches regular expression validation"
@@ -65,9 +65,9 @@
                           {:a [(matches #"(?i)[A-Z]+")]})))
     (deftest error-message-is-cumtomisable
       (let [r (validate {:a nil}
-                        {:a [(matches #"(?i)[A-Z]+" {:message "custom message"})]})]
-      (is (= '("custom message") 
-             (get-in r [:errors :a])))))))
+                        {:a [(with-msg (matches #"(?i)[A-Z]+") "custom message")]})]
+        (is (= '["custom message"]
+               (get-in r [:errors :a])))))))
 
 (testing "email validation"
   (deftest adds-error-when-attribut-does-not-match-regex
@@ -75,53 +75,53 @@
                                   {:a [matches-email]}))))
     (is (valid? (validate {:a "mail@michaeljon.es"}
                           {:a [matches-email]}))))
-  
-  (deftest error-message-is-cumtomisable
-      (let [r (validate {:a nil}
-                        {:a [(matches-email {:message "custom message"})]})]
-        (is (= '("custom message") 
-               (get-in r [:errors :a]))))))
-
-(testing "member of validaiton"
-  (deftest is-not-valid-when-value-not-in-list
-    (is (not (valid? (validate {:a "d"}
-                               {:a [(member-of ["a" "b"])]})))))
-  
-  (deftest is-valid-when-value-is-in-list
-    (is (valid? (validate {:a "a"}
-                          {:a [(member-of ["a" "b"])]}))))
-  
-  (deftest default-message-should-list-valid-values
-    (let [r (validate {:a "a"}
-                      {:a [(member-of {:lat ["a" "b"]})]})]
-     (is "is not a member of a or b"
-         (get-in r [:errors :a]))))
 
   (deftest error-message-is-cumtomisable
     (let [r (validate {:a nil}
-                      {:a [(member-of ["a"] { :message "custom message"})]})]
-      (is (= '("custom message") 
+                      {:a [(with-msg matches-email "custom message")]})]
+      (is (= '["custom message"]
              (get-in r [:errors :a]))))))
 
-(testing "attributes in a range" 
+(testing "member of validation"
+  (deftest is-not-valid-when-value-not-in-list
+    (is (not (valid? (validate {:a "d"}
+                               {:a [(member-of ["a" "b"])]})))))
+
+  (deftest is-valid-when-value-is-in-list
+    (is (valid? (validate {:a "a"}
+                          {:a [(member-of ["a" "b"])]}))))
+
+  (deftest default-message-should-list-valid-values
+    (let [r (validate {:a "a"}
+                      {:a [(member-of {:lat ["a" "b"]})]})]
+      (is "is not a member of a or b"
+          (get-in r [:errors :a]))))
+
+  (deftest error-message-is-cumtomisable
+    (let [r (validate {:a nil}
+                      {:a [(with-msg (member-of ["a"])) "custom message"]})]
+      (is (= ["custom message"]
+             (get-in r [:errors :a]))))))
+
+(testing "attributes in a range"
   (deftest outside-of-range
     (let [r (validate { :a 11 }
                       { :a [(in-range 1 10)]})]
       (is (false? (valid? r)))
       (is (= '("does not fall between 1 and 9")
              (get-in r [:errors :a])))))
-  
+
   (deftest non-numeric
     (let [r (validate {:a "fail" }
                       {:a [(in-range 1 10)]})]
       (is (false? (valid? r)))
       (is (= ["non numeric", "does not fall between 1 and 9"]
-               (get-in r [:errors :a])))))
-  
+             (get-in r [:errors :a])))))
+
   (deftest error-message-is-cumtomisable
     (let [r (validate {:a 12}
-                      {:a [(in-range 1 10 { :message "custom message"})]})]
-      (is (= '("custom message") 
+                      {:a [(with-msg (in-range 1 10) "custom message")]})]
+      (is (= '("custom message")
              (get-in r [:errors :a]))))))
 
 (deftest multiple-validations
@@ -151,7 +151,7 @@
       (is (valid? r)))))
 
 (testing "validate-if"
-  (let [always-true (fn [s a] true)]
+  (let [always-true (fn [v] true)]
     (deftest runs-validations
       (is (valid? (validate {:a :a}
                             {:a [(validate-if always-true
