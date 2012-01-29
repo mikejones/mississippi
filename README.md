@@ -45,6 +45,11 @@ with a call to the `with-msg` function:
     user> (validate {:b "b"} validations)
     {:errors {:a ("must be set" "blank")}}
 
+You can also provide a function with you want to include the value
+being validated in the error message, for example:
+
+    (with-message required #(str "'" % "'" is required))
+
 ## Installation
 
 Mississippi is hosted on [Clojars](http://www.clojars.org).
