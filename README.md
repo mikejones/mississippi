@@ -7,7 +7,7 @@ Mississippi provides simple validations for maps.
 Validations are provided as functions and described in a map according to the structure of your subject.
 
     user> (def validations {:a [required not-blank]})
-    user> (valid? (validate {:b} validations))
+    user> (valid? (validate {:b "b"} validations))
     false
     user> (valid? (validate {:a "valid"} validations))
     true
