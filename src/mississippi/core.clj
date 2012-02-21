@@ -9,18 +9,6 @@
       (to-csv lat)
       (str (to-csv (butlast lat)) " or " (last lat)))))
 
-(defn with-msg
-  "Wrap a validation function with a custom message.
-
-   f - a validation function
-   msg - either a string or a function, if a function takes a single argument of the value being validated" [f
-   msg]
-  (fn [v]
-    (when (f v)
-      (cond
-       (ifn? msg) (msg v)
-       :else msg))))
-
 (defn- build-valiation-fn
   [{:keys [validation message-fn when-fn]}]
   (let [when-fn (or when-fn (constantly true))]
