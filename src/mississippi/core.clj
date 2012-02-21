@@ -99,9 +99,11 @@
 
 (defn matches-email
   "Validates the String value v matches a basic email pattern."
-  [v]
-  ((with-msg (matches #"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}\b")
-     "invalid email address") v))
+  [& {:keys [message-fn when-fn]}]
+  (build-valiation-fn {:validation #(re-find #"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}\b"
+                                             (str %))
+                       :message-fn (or message-fn (constantly "invalid email address"))
+                       :when-fn when-fn}))
 
 (defn- flatten-keys
   ([m] (flatten-keys {} [] m))
@@ -119,20 +121,8 @@
        flatten
        (remove nil?)))
 
-(defn validate-when
-  [condition validations]
-  (fn [subject attr]
-    (when (condition subject attr)
-      validations)))
-
-(defn validate-if
-  "Only run the given validation functions if the condition predicate
-  evaluates to true."
-  [predicate consequent alternative]
-  (fn [subject attr]
-    (if (predicate subject attr)
-      consequent
-      alternative)))
+(def ^:dynamic *subject*)
+(def ^:dynamic *attr*)
 
 (defn errors
   "Return the errors from applying the validations to the subject
@@ -140,16 +130,15 @@
    subject     - a map of values
    validations - a map of validations to apply"
   [subject validations]
-  (reduce (fn [errors [attr validations]]
-            (let [v-funcs (if (fn? validations)
-                            (validations subject attr)
-                            validations)]
-              (let [attr-errors (attr-errors (get-in subject attr) v-funcs)]
-                (if (empty? attr-errors)
-                  errors
-                  (assoc-in errors attr attr-errors)))))
-          {}
-          (flatten-keys validations)))
+  (binding [*subject* subject]
+    (reduce (fn [errors [attr v-funcs]]
+              (binding [*attr* attr]
+                (let [attr-errors (attr-errors (get-in subject attr) v-funcs)]
+                  (if (empty? attr-errors)
+                    errors
+                    (assoc-in errors attr attr-errors)))))
+            {}
+            (flatten-keys validations))))
 
 (defn validate
   "Apply a map of validation functions to a Clojure map.
@@ -165,13 +154,13 @@
 
   A possible validations map could be:
 
-  {:a [required]
-   :b [required numeric]
-   :c {:d [required]}}
+  {:a [(required)]
+   :b [(required) (numeric :message-fn (fn [v] (str % \" is not a number\")))]
+   :c {:d [(required :when-fn (fn [_] (some #{:a} (keys *subject*)]}}
 
   An alternative syntax for validating nested attributes is to provide the key as a vector:
 
-  {[:c :d] [required]}"
+  {[:c :d] [(required)]}"
   [subject validations]
   (assoc subject
     :errors (errors subject validations)))

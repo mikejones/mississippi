@@ -32,6 +32,18 @@
                              {:a [(with-msg not-blank "custom message")]})
                    [:errors :a])))))
 
+(deftest blank-validation
+  (is  (= {}
+          (errors {:a ""} {:a [(blank)]})))
+  (is  (= {:a '("not blank")}
+          (errors {:a "value"} {:a [(blank)]})))
+  (is  (= {:a '("custom message")}
+          (errors {:a "value"}
+                  {:a [(blank :message-fn (constantly "custom message"))]})))
+  (is  (= {}
+          (errors {:a "value"}
+                  {:a [(blank :when-fn (constantly false))]}))))
+
 (testing "not blank validation"
   (deftest invalid-when-empty-string
     (is (valid? (validate {:a ""} {:a [(blank)]})))
@@ -77,9 +89,9 @@
 (testing "email validation"
   (deftest adds-error-when-attribut-does-not-match-regex
     (is (false? (valid? (validate {:a "not-an-email-address"}
-                                  {:a [matches-email]}))))
+                                  {:a [(matches-email)]}))))
     (is (valid? (validate {:a "mail@michaeljon.es"}
-                          {:a [matches-email]}))))
+                          {:a [(matches-email)]}))))
 
   (deftest error-message-is-cumtomisable
     (let [r (validate {:a nil}
@@ -136,60 +148,30 @@
     (is (= {:a ["required" "not a number"]}
            (:errors r)))))
 
-;; (deftest multiple-nested-validations
-;;   (let [o { :a { :b { :c nil :d 1 :e nil}}}
-;;         r (validate o {:a {:b {:c [required]
-;;                                :d [required numeric]
-;;                                :e [required]}}})]
-;;     (is (false? (valid? r)))
-;;     (is (= {:a {:b {:c ["required"] :e ["required"]}}}
-;;            (:errors r)))))
+(deftest multiple-nested-validations
+  (let [o { :a { :b { :c nil :d 1 :e nil}}}
+        r (validate o {:a {:b {:c [(required)]
+                               :d [(required) (numeric)]
+                               :e [(required)]}}})]
+    (is (false? (valid? r)))
+    (is (= {:a {:b {:c ["required"] :e ["required"]}}}
+           (:errors r)))))
 
-;; (testing "nested attributes"
-;;   (deftest are-not-valid
-;;     (let [o { :a { :b { :c nil}}}
-;;           r (validate o {[:a :b :c] [required]})]
-;;       (is (not (valid? r)))))
+(testing "nested attributes"
+  (deftest are-not-valid
+    (let [o { :a { :b { :c nil}}}
+          r (validate o {[:a :b :c] [(required)]})]
+      (is (not (valid? r)))))
 
-;;   (deftest are-valid
-;;     (let [o { :a { :b { :c "foo"}}}
-;;           r (validate o {[:a :b :c] [required]})]
-;;       (is (valid? r)))))
+  (deftest are-valid
+    (let [o { :a { :b { :c "foo"}}}
+          r (validate o {[:a :b :c] [(required)]})]
+      (is (valid? r)))))
 
-;; ;; (testing "validate-if"
-;; ;;   (let [has-b-key? (fn [subj attr] (some #{:b} (keys subj)))
-;; ;;         validations {:a (validate-if has-b-key?
-;; ;;                                      [required not-blank]
-;; ;;                                      [(blank)])}]
-;; ;;     (deftest runs-validations
-;; ;;       (is (valid? (validate {:a ""} validations)))
-;; ;;       (is (not (valid? (validate {:a "" :b ""} validations)))))))
-
-;; ;; (testing "validate-when"
-;; ;;   (let [has-b-key? (fn [subj attr]
-;; ;;                      (some #{:b} (keys subj)))]
-;; ;;     (deftest runs-validations-when
-;; ;;       (is (valid? (validate {:a :nil}
-;; ;;                             {:a (validate-when has-b-key? [required])})))
-;; ;;       (is (not (valid? (validate {:b "value" :a nil}
-;; ;;                                  {:a (validate-when has-b-key? [required])}))))
-;; ;;       (is (valid? (validate {[:a :a] :nil}
-;; ;;                             {[:a :a] (validate-when has-b-key? [required])})))
-;; ;;       (is (not (valid? (validate {[:a :a] nil
-;; ;;                                   :b "value"}
-;; ;;                                  {[:a :a] (validate-when has-b-key?
-;; ;;                                                         [required])})))))))
-
-;; (deftest blank-validation
-;;   (is  (= {}
-;;           (errors {:a ""}
-;;                   {:a [(blank)]})))
-;;   (is  (= {:a '("not blank")}
-;;           (errors {:a "value"}
-;;                   {:a [(blank)]})))
-;;   (is  (= {:a '("custom message")}
-;;           (errors {:a "value"}
-;;                   {:a [(blank :message-fn (constantly "custom message"))]})))
-;;   (is  (= {}
-;;           (errors {:a "value"}
-;;                   {:a [(blank :when-fn (constantly false))]}))))
+(testing "functions have access to the subject and attr"
+  (let [has-b-key?  (fn [_] (and (some #{:b} (keys *subject*))
+                                (= [:a] *attr*)))
+        validations {:a [(required :when-fn has-b-key?)]}]
+    (deftest runs-validations
+      (is (valid? (validate {:a nil} validations)))
+      (is (not (valid? (validate {:a nil :b ""} validations)))))))
