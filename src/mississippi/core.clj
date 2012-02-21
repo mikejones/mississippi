@@ -21,27 +21,65 @@
        (ifn? msg) (msg v)
        :else msg))))
 
+(defn- build-valiation-fn
+  [{:keys [validation message-fn when-fn]}]
+  (let [when-fn (or when-fn (constantly true))]
+    (fn [v]
+      (when (and (when-fn v)
+                 (not (validation v)))
+        (message-fn v)))))
+
 (defn required
-  "Validates given value is not nil."
-  [v]
-  (when-not v "required"))
+  "Validates given value is not nil.
+   opts
+    :when-fn       only apply the validation if this function returns true
+    :message-fn    a function accepting thevalue and returning a string for
+                   the error message"
+  [& {:keys [message-fn when-fn]}]
+  (build-valiation-fn {:validation #(not (nil? %))
+                       :message-fn (or message-fn (constantly "required"))
+                       :when-fn    when-fn}))
 
 (defn not-blank
   "Validates given string value is not blank."
-  [v]
-  (when (blank? v) "blank"))
+  [& {:keys [message-fn when-fn]}]
+  (build-valiation-fn {:validation #(not (blank? %))
+                       :message-fn (or message-fn (constantly "blank"))
+                       :when-fn    when-fn}))
+
+(defn blank
+  "Returns a fn that validates given string value is blank."
+  [& {:keys [message-fn when-fn]}]
+  (build-valiation-fn {:validation blank?
+                       :message-fn (or message-fn (constantly "not blank"))
+                       :when-fn    when-fn}))
 
 (defn numeric
   "Validates given value is an instance of Number."
-  [v]
-  (when-not (instance? Number v) "non numeric"))
+  [& {:keys [message-fn when-fn]}]
+  (build-valiation-fn {:validation #(instance? Number %)
+                       :message-fn (or message-fn (constantly "not a number"))
+                       :when-fn    when-fn}))
 
 (defn member-of
   "Validates the value v is contained in s (will be coerced to a set)."
-  [s]
-  (fn [v]
-    (when-not (some #{v} (set s))
-      (str "is not a member of " (to-sentence s)))))
+  [s & {:keys [message-fn when-fn]}]
+  (build-valiation-fn {:validation (fn [v] (some #{v} (set s)))
+                       :message-fn (or message-fn
+                                       (constantly (str "not a member of " (to-sentence s))))
+                       :when-fn    when-fn}))
+
+(defn in-range
+  "Validates the value v is both numeric and falls between the range of start and end."
+  [start end & {:keys [message-fn when-fn]}]
+  (let [range        (range start end)
+        valiation-fn (fn [v] (and (instance? Number v)
+                                 (some #{v} (set range))))]
+    (build-valiation-fn {:validation valiation-fn 
+                         :message-fn (or message-fn
+                                         (constantly (str "does not fall between " (first range)
+                                                          " and " (last range))))
+                         :when-fn    when-fn})))
 
 (defn subset-of
   "Validates the value v is a subset of s. Both v and s will be coerced to sets."
@@ -50,15 +88,7 @@
     (when-not (subset? (set v) (set s))
       (str "not a subset of " (set s)))))
 
-(defn in-range
-  "Validates the value v is both numeric and falls between the range of start and end."
-  [start end]
-  (let [r (range start end)]
-    (fn [v]
-      (let [member-fn (with-msg (member-of (set r))
-                        (str "does not fall between " (first r) " and " (last r)))]
-        [(numeric v)
-         (member-fn v)]))))
+
 
 (defn matches
   "Validates the String value v matches the given Regexp re."
@@ -72,15 +102,6 @@
   [v]
   ((with-msg (matches #"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}\b")
      "invalid email address") v))
-
-(defn validate-if
-  "Only run the given validation functions if the condition predicate
-  evaluates to true."
-  [condition & validations]
-  (fn [value]
-    (if (condition value)
-      (for [validation validations]
-        (validation value)))))
 
 (defn- flatten-keys
   ([m] (flatten-keys {} [] m))
@@ -98,19 +119,37 @@
        flatten
        (remove nil?)))
 
+(defn validate-when
+  [condition validations]
+  (fn [subject attr]
+    (when (condition subject attr)
+      validations)))
+
+(defn validate-if
+  "Only run the given validation functions if the condition predicate
+  evaluates to true."
+  [predicate consequent alternative]
+  (fn [subject attr]
+    (if (predicate subject attr)
+      consequent
+      alternative)))
+
 (defn errors
   "Return the errors from applying the validations to the subject
 
-   subject    - a map of values
-   validation - a map of validations to apply"
+   subject     - a map of values
+   validations - a map of validations to apply"
   [subject validations]
-  (reduce (fn [errors [attr v-funcs]]
-            (let [attr-errors (attr-errors (get-in subject attr) v-funcs)]
-              (if(empty? attr-errors)
-                errors
-                (assoc-in errors attr attr-errors))))
+  (reduce (fn [errors [attr validations]]
+            (let [v-funcs (if (fn? validations)
+                            (validations subject attr)
+                            validations)]
+              (let [attr-errors (attr-errors (get-in subject attr) v-funcs)]
+                (if (empty? attr-errors)
+                  errors
+                  (assoc-in errors attr attr-errors)))))
           {}
-          validations))
+          (flatten-keys validations)))
 
 (defn validate
   "Apply a map of validation functions to a Clojure map.
@@ -135,7 +174,7 @@
   {[:c :d] [required]}"
   [subject validations]
   (assoc subject
-    :errors (errors subject (flatten-keys validations))))
+    :errors (errors subject validations)))
 
 (defn valid?
   "Checks if the map contains any errors"
