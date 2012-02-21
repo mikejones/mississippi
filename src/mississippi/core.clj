@@ -83,19 +83,19 @@
 
 (defn subset-of
   "Validates the value v is a subset of s. Both v and s will be coerced to sets."
-  [s]
-  (fn [v]
-    (when-not (subset? (set v) (set s))
-      (str "not a subset of " (set s)))))
-
-
+  [s & {:keys [message-fn when-fn]}] 
+  (build-valiation-fn {:validation (fn [v] (subset? (set v) (set s)))
+                       :message-fn (or message-fn
+                                       (constantly (str "not a subset of " (set s))))
+                       :when-fn    when-fn}))
 
 (defn matches
   "Validates the String value v matches the given Regexp re."
-  [re]
-  (fn [v]
-    (when-not (re-find re (str v))
-      (str "does not match pattern of '" re "'"))))
+  [re {:keys [message-fn when-fn]}]
+  (build-valiation-fn {:validation (fn [v] (re-find re (str v)))
+                       :message-fn (or message-fn
+                                       (constantly (str "does not match pattern of '" re "'")))
+                       :when-fn    when-fn}))
 
 (defn matches-email
   "Validates the String value v matches a basic email pattern."
