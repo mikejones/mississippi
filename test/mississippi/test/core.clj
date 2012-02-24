@@ -4,17 +4,20 @@
 
 (testing "required validation"
   (deftest checks-for-required-attributes
-    (let [r (validate {:a nil}
-                      {:a [(required)]})]
-      (is (false? (valid? r)))
-      (is (=  {:a ["required"]}
-              (:errors r)))))
+    (let [errors (errors {:a nil} {:a [(required)]})]
+      (is (not (empty? (errors {:a nil} {:a [(required)]}))))
+      (is (=  errors {:a ["required"]}))))
 
   (deftest is-valid-when-the-attribute-is-present
     (is (valid? (validate {:a :a}
                           {:a [(required)]}))))
 
   (deftest error-message-is-customisable
+    (let [r (validate {:a nil}
+                      {:a [(required :message-fn (constantly "custom message"))]})]
+      (is (= ["custom message"]
+             (get-in r [:errors :a])))))
+  (deftest not-run-with-predicate-is-false
     (let [r (validate {:a nil}
                       {:a [(required :message-fn (constantly "custom message"))]})]
       (is (= ["custom message"]
@@ -29,7 +32,7 @@
     (is (valid? (validate {:a "test"} {:a [not-blank]})))
     (is (= '("custom message")
            (get-in (validate {:a ""}
-                             {:a [(with-msg not-blank "custom message")]})
+                             {:a [(not-blank :message-fn (constantly "custom message"))]})
                    [:errors :a])))))
 
 (deftest blank-validation
@@ -82,7 +85,7 @@
                           {:a [(matches #"(?i)[A-Z]+")]})))
     (deftest error-message-is-cumtomisable
       (let [r (validate {:a nil}
-                        {:a [(with-msg (matches #"(?i)[A-Z]+") "custom message")]})]
+                        {:a [(matches #"(?i)[A-Z]+") :message-fn (constantly "custom message")]})]
         (is (= '["custom message"]
                (get-in r [:errors :a])))))))
 
@@ -95,7 +98,7 @@
 
   (deftest error-message-is-cumtomisable
     (let [r (validate {:a nil}
-                      {:a [(with-msg matches-email "custom message")]})]
+                      {:a [(matches-email :message-fn (constantly "custom message"))]})]
       (is (= '["custom message"]
              (get-in r [:errors :a]))))))
 
@@ -169,9 +172,10 @@
       (is (valid? r)))))
 
 (testing "functions have access to the subject and attr"
-  (let [has-b-key?  (fn [_] (and (some #{:b} (keys *subject*))
+  (let [has-b-key?  (fn [subject] (and (some #{:b} (keys subject))
                                 (= [:a] *attr*)))
         validations {:a [(required :when-fn has-b-key?)]}]
     (deftest runs-validations
       (is (valid? (validate {:a nil} validations)))
       (is (not (valid? (validate {:a nil :b ""} validations)))))))
+  

@@ -2,6 +2,9 @@
   (:use [clojure.string :only (blank?)]
         [clojure.set :only (difference subset?)]))
 
+(def ^:dynamic *subject*)
+(def ^:dynamic *attr*)
+
 (defn- to-sentence
   [lat]
   (let [to-csv (fn [x] (apply str (interpose ", " x)))]
@@ -13,7 +16,7 @@
   [{:keys [validation message-fn when-fn]}]
   (let [when-fn (or when-fn (constantly true))]
     (fn [v]
-      (when (and (when-fn v)
+      (when (and (when-fn *subject*)
                  (not (validation v)))
         (message-fn v)))))
 
@@ -60,10 +63,9 @@
 (defn in-range
   "Validates the value v is both numeric and falls between the range of start and end."
   [start end & {:keys [message-fn when-fn]}]
-  (let [range        (range start end)
-        valiation-fn (fn [v] (and (instance? Number v)
-                                 (some #{v} (set range))))]
-    (build-valiation-fn {:validation valiation-fn 
+  (let [range        (range start end)]
+    (build-valiation-fn {:validation (fn [v] (and (instance? Number v)
+                                                 (some #{v} (set range))))
                          :message-fn (or message-fn
                                          (constantly (str "does not fall between " (first range)
                                                           " and " (last range))))
@@ -108,9 +110,6 @@
   (->> (map #(%1 %2) v-funcs (repeat value))
        flatten
        (remove nil?)))
-
-(def ^:dynamic *subject*)
-(def ^:dynamic *attr*)
 
 (defn errors
   "Return the errors from applying the validations to the subject
