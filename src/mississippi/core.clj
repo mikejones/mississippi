@@ -142,13 +142,16 @@
   [subject validation-map]
   (reduce (fn [errors [attr validations]]
             (let [value (get-in subject attr)]
-              (assoc-in errors
-                        attr (->> validations
-                                  (map (fn [[validate-fn & {:keys [msg]}]]
-                                         (when-not (validate-fn value)
-                                           msg)))
-                                  flatten
-                                  (remove nil?)))))
+              (let [attr-errors (->> validations
+                                     (map (fn [[validate-fn & {:keys [msg when-fn] :or {when-fn (constantly true)}}]]
+                                            (when (and (when-fn subject)
+                                                       (not (validate-fn value)))
+                                              msg)))
+                                     flatten
+                                     (remove nil?))]
+                (if-not (empty? attr-errors)
+                  (assoc-in errors attr attr-errors)
+                  errors))))
           {}
           (flatten-keys validation-map)))
 

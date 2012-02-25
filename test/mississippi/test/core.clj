@@ -12,6 +12,14 @@
     (is (= {:a ["error message"]}
            (errors {:a nil} {:a [[(constantly false) :msg "error message"]]}))))
 
+  (deftest allows-predicate-to-prevent-validation-based-on-subject-under-validation
+    (letfn [(unless-has-b-key [subject]
+              (-> subject keys #{:b}))]
+     (is (= {}
+            (errors {:a nil :b nil} {:a [[(constantly false)
+                                          :msg "error message"
+                                          :when-fn unless-has-b-key]]})))))
+
   ;; (deftest is-valid-when-the-attribute-is-present
   ;;   (is (= {}
   ;;          (errors {:a :a} {:a [(required)]}))))
