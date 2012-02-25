@@ -18,7 +18,11 @@
      (is (= {}
             (errors {:a nil :b nil} {:a [[(constantly false)
                                           :msg "error message"
-                                          :when-fn unless-has-b-key]]})))))
+                                          :when unless-has-b-key]]})))))
+
+  (deftest single-validations-dont-need-to-be-nested
+    (is (= {:a ["error message"]}
+           (errors {:a ["error message"]} {:a [(constantly false) :msg "error message"]}))))
 
   ;; (deftest is-valid-when-the-attribute-is-present
   ;;   (is (= {}
