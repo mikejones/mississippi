@@ -148,13 +148,10 @@
   [subject validation-map]
   (reduce (fn [errors [attr validations]]
             (let [value (get-in subject attr)]
-              (let [attr-errors (if (every? vector? validations)
-                                  (->> validations
-                                       (map (partial apply-validation value subject))
-                                       flatten
-                                       (remove nil?))
-                                  (when-let [message (apply-validation value subject validations)]
-                                    [message]))]
+              (let [attr-errors (->> (if (every? vector? validations) validations [validations])
+                                     (map (partial apply-validation value subject))
+                                     flatten
+                                     (remove nil?))]
                 (if-not (empty? attr-errors)
                   (assoc-in errors attr attr-errors)
                   errors))))
