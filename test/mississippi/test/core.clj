@@ -13,54 +13,53 @@
            (errors {:a nil} {:a [[(constantly false) :msg "error message"]]}))))
 
   (deftest allows-predicate-to-prevent-validation-based-on-subject-under-validation
-    (letfn [(unless-has-b-key [subject]
-              (-> subject keys #{:b}))]
-     (is (= {}
-            (errors {:a nil :b nil} {:a [[(constantly false)
-                                          :msg "error message"
-                                          :when unless-has-b-key]]})))))
+    (letfn [(unless-has-b-key [subject] (-> subject keys #{:b}))]
+      (is (= {}
+             (errors {:a nil :b nil}
+                     {:a [[(constantly false) :msg "error message" :when unless-has-b-key]]})))))
 
   (deftest single-validations-dont-need-to-be-nested
     (is (= {:a ["error message"]}
-           (errors {:a ["error message"]} {:a [(constantly false) :msg "error message"]}))))
+           (errors {:a ["error message"]}
+                   {:a [(constantly false) :msg "error message"]})))))
 
-  ;; (deftest is-valid-when-the-attribute-is-present
-  ;;   (is (= {}
-  ;;          (errors {:a :a} {:a [(required)]}))))
+(testing "in-range validation builder"
+  (let [[validation-fn & {msg :msg when-fn :when}] (in-range 1 10)]
+    (deftest validation-fuction
+      (is (false? (validation-fn 0)))
+      (is (false? (validation-fn 10)))
+      (is (true? (validation-fn 9)))
+      (is (true? (validation-fn 1))))
+    (deftest message-deault
+      (is (= "does not fall between 1 and 9" msg)))
+    (deftest there-is-no-predicate
+      (is (nil? when-fn)))))
 
-  ;; (deftest error-message-is-customisable
-  ;;   (let [errors (errors {:a nil}
-  ;;                        {:a [(required :msg "a custom message")]})]
-  ;;     (is (= ["a custom message"] (errors :a)))))
+;; (testing "in-range validadtion builder"
 
-  ;; (deftest not-run-with-predicate-is-false
-  ;;   (is (= {}
-  ;;          (errors {:a nil}
-  ;;                  {:a [(required :when-fn (constantly false))]}))))
+  
+;;   (deftest outside-of-range
+;;     (let [r (validate { :a 11 }
+;;                       { :a [(in-range 1 10)]})]
+;;       (is (false? (valid? r)))
+;;       (is (= '("does not fall between 1 and 9")
+;;              (get-in r [:errors :a])))))
 
-  ;; (deftest allows-blank-values-by-default
-  ;;   (is (= {}
-  ;;          (errors {:a ""} {:a [(required)]}))))
+;;   (deftest non-numeric
+;;     (let [r (validate {:a "fail" }
+;;                       {:a [(in-range 1 10)]})]
+;;       (is (false? (valid? r)))
+;;       (is (= ["does not fall between 1 and 9"]
+;;              (get-in r [:errors :a])))))
 
-  ;; (deftest can-check-for-blank-values
-  ;;   (is (= {:a ["required"]}
-  ;;          (errors {:a ""}
-  ;;                  {:a [(required :allow-blank false)]}))))
+;;   (deftest error-message-is-cumtomisable
+;;     (let [r (validate {:a 12}
+;;                       {:a [(in-range 1 10
+;;                                      :message-fn (constantly "custom message"))]})]
+;;       (is (= '("custom message")
+;;              (get-in r [:errors :a]))))))
 
-  )
 
-;; (testing "blank validation"
-;;   (deftest validates-values-are-blank
-;;    (is  (= {}
-;;            (errors {:a ""} {:a [(blank)]})))
-;;    (is  (= {:a '("not blank")}
-;;            (errors {:a "value"} {:a [(blank)]})))
-;;    (is  (= {:a '("custom message")}
-;;            (errors {:a "value"}
-;;                    {:a [(blank :message-fn (constantly "custom message"))]})))
-;;    (is  (= {}
-;;            (errors {:a "value"}
-                   ;; {:a [(blank :when-fn (constantly false))]})))))
 
 ;; (testing "not blank validation"
 ;;   (deftest invalid-when-empty-string
@@ -138,27 +137,6 @@
 ;;                                       :message-fn (constantly "custom message"))]})]
 ;;       (is (= ["custom message"] (-> r :errors :a))))))
 
-;; (testing "attributes in a range"
-;;   (deftest outside-of-range
-;;     (let [r (validate { :a 11 }
-;;                       { :a [(in-range 1 10)]})]
-;;       (is (false? (valid? r)))
-;;       (is (= '("does not fall between 1 and 9")
-;;              (get-in r [:errors :a])))))
-
-;;   (deftest non-numeric
-;;     (let [r (validate {:a "fail" }
-;;                       {:a [(in-range 1 10)]})]
-;;       (is (false? (valid? r)))
-;;       (is (= ["does not fall between 1 and 9"]
-;;              (get-in r [:errors :a])))))
-
-;;   (deftest error-message-is-cumtomisable
-;;     (let [r (validate {:a 12}
-;;                       {:a [(in-range 1 10
-;;                                      :message-fn (constantly "custom message"))]})]
-;;       (is (= '("custom message")
-;;              (get-in r [:errors :a]))))))
 
 ;; (deftest multiple-validations
 ;;   (let [r (validate {:a nil}

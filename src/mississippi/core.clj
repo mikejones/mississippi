@@ -2,9 +2,6 @@
   (:use [clojure.string :only (blank?)]
         [clojure.set :only (difference subset?)]))
 
-;; (def ^:dynamic *subject*)
-;; (def ^:dynamic *attr*)
-
 ;; (defn- to-sentence
 ;;   [lat]
 ;;   (let [to-csv (fn [x] (apply str (interpose ", " x)))]
@@ -67,16 +64,14 @@
 ;;                                        (constantly (str "not a member of " (to-sentence s))))
 ;;                        :when-fn    when-fn}))
 
-;; (defn in-range
-;;   "Validates the value v is both numeric and falls between the range of start and end."
-;;   [start end & {:keys [message-fn when-fn]}]
-;;   (let [range        (range start end)]
-;;     (build-valiation-fn {:validation (fn [v] (and (instance? Number v)
-;;                                                  (some #{v} (set range))))
-;;                          :message-fn (or message-fn
-;;                                          (constantly (str "does not fall between " (first range)
-;;                                                           " and " (last range))))
-;;                          :when-fn    when-fn})))
+(defn in-range
+  "Validates the value v falls between the range of start and end."
+  [start end & {msg :msg when-fn :when}]
+  (let [range (range start end)]
+    [(comp not nil? (set range))
+     :when when-fn
+     :msg  (or msg
+               (str "does not fall between " (first range) " and " (last range)))]))
 
 ;; (defn subset-of
 ;;   "Validates the value v is a subset of s. Both v and s will be coerced to sets."
@@ -111,28 +106,6 @@
                       (flatten-keys a (if (vector? k) (into ks k) (conj ks k)) v))
                     (seq m)))
        (assoc a ks m))))
-
-;; (defn- attr-errors
-;;   [value v-funcs]
-;;   (->> (map #(%1 %2) v-funcs (repeat value))
-;;        flatten
-;;        (remove nil?)))
-
-;; (defn errors
-;;   "Return the errors from applying the validations to the subject
-
-;;    subject     - a map of values
-;;    validations - a map of validations to apply"
-;;   [subject validations]
-;;   (binding [*subject* subject]
-;;     (reduce (fn [errors [attr v-funcs]]
-;;               (binding [*attr* attr]
-;;                 (let [attr-errors (attr-errors (get-in subject attr) v-funcs)]
-;;                   (if (empty? attr-errors)
-;;                     errors
-;;                     (assoc-in errors attr attr-errors)))))
-;;             {}
-;;             (flatten-keys validations))))
 
 (defn required
   [v]
