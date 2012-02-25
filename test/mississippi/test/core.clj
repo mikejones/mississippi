@@ -30,7 +30,7 @@
       (is (false? (validation-fn 10)))
       (is (true? (validation-fn 9)))
       (is (true? (validation-fn 1))))
-    (deftest message-deault
+    (deftest message-default
       (is (= "does not fall between 1 and 9" msg)))
     (deftest there-is-no-predicate
       (is (nil? when-fn)))))
