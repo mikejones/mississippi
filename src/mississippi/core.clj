@@ -138,9 +138,9 @@
   [v]
   ((comp not nil?) v))
 
-(defn apply-validation
-  [value subject [validate-fn & {when-fn :when msg :msg}]]
-  (when (and ((or when-fn (constantly true)) subject)
+(defn- apply-validation
+  [value subject [validate-fn & {when-fn :when msg :msg :or {when-fn (constantly true)}}]]
+  (when (and (when-fn subject)
              (not (validate-fn value)))
     msg))
 
@@ -148,16 +148,15 @@
   [subject validation-map]
   (reduce (fn [errors [attr validations]]
             (let [value (get-in subject attr)]
-              (if (every? vector? validations)
-                (let [attr-errors (->> validations
+              (let [attr-errors (if (every? vector? validations)
+                                  (->> validations
                                        (map (partial apply-validation value subject))
                                        flatten
-                                       (remove nil?))]
-                  (if-not (empty? attr-errors)
-                    (assoc-in errors attr attr-errors)
-                    errors))
-                (if-let [message (apply-validation value subject validations)]
-                  (assoc-in errors attr [message])
+                                       (remove nil?))
+                                  (when-let [message (apply-validation value subject validations)]
+                                    [message]))]
+                (if-not (empty? attr-errors)
+                  (assoc-in errors attr attr-errors)
                   errors))))
           {}
           (flatten-keys validation-map)))
