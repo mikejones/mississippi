@@ -72,11 +72,31 @@
 
 (defn- apply-validation
   [value subject [validate-fn & {when-fn :when msg :msg}]]
-  (when (and ((or when-fn (constantly true)) subject)
-             (not (validate-fn value)))
-    msg))
+  (let [when-fn (or when-fn (constantly true))]
+    (when (and (when-fn subject)
+               (not (validate-fn value)))
+      msg)))
+
+(defn errors-for
+  [subject attr validations]
+  (let [value (get-in subject attr)
+        validations (if (every? vector? validations)
+                      validations
+                      [validations])]
+    (->> validations
+         (map (partial apply-validation value subject))
+         flatten
+         (remove nil?))))
 
 (defn errors
+  [subject validations]
+  (->> (for [[attr attr-validations] (flatten-keys validations)
+             :let [attr-errors (errors-for subject attr attr-validations)]
+             :when (not (empty? attr-errors))]
+         [attr attr-errors])
+       (reduce #(apply assoc-in %1 %2) {})))
+
+(defn validate
   "Apply a map of validations to a Clojure map.
 
   Validations should be a map where the key is the attribute in the
@@ -84,7 +104,7 @@
   validation information to apply to the value in the subject map.
 
   Validation data should be in the following format. The first
-  element is a function accepting  a single arugment and returnsing a
+  element is a function accepting  a single arugment and returning a
   boolean indicating if the value is valid. Subsequent values should be
   pairs of options. Valid options are:
 
@@ -126,26 +146,15 @@
 
   {:a [\"required\"]}
 
-  
-  Note: an alternative syntax for validating nested attributes is to provide the key as a vector:
+  To validate nested maps, simply mirror the subject's shape in the validations:
 
-  {[:c :d] [(required)]}"
-  [subject validations]
-  (reduce (fn [errors [attr attr-validations]]
-            (let [value (get-in subject attr)]
-              (let [attr-errors (->> (if (every? vector? attr-validations)
-                                       attr-validations
-                                       [attr-validations])
-                                     (map (partial apply-validation value subject))
-                                     flatten
-                                     (remove nil?))]
-                (if-not (empty? attr-errors)
-                  (assoc-in errors attr attr-errors)
-                  errors))))
-          {}
-          (flatten-keys validations)))
+  (validate {:a {:b {:c \"foo\"}}}
+            {:a {:b {:c [(required)]}}})
 
-(defn validate
+  An alternative syntax for validating nested attributes is to provide
+  the key as a vector of keys:
+
+  {[:a :b :c] [(required)]}"
   [subject validations]
   (assoc subject :errors (errors subject validations)))
 
