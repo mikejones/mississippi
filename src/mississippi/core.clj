@@ -39,7 +39,7 @@
 (defn subset-of
   "Validates the value v is a subset of s. Both v and s will be coerced to sets."
   [s & {msg :msg when-fn :when}]
-  [(fn [v] (subset? (set s) (set v)))
+  [(fn [v] (subset? (set v) (set s)))
    :msg (or msg (str "not a subset of " (to-sentence s)))
    :when when-fn])
 

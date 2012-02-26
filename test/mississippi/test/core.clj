@@ -69,7 +69,8 @@
     (deftest subset-of-validation
       (is (false? (validation-fn [:a :c])))
       (is (false? (validation-fn [:c])))
-      (is (true?  (validation-fn [:a :b]))))
+      (is (true?  (validation-fn [:a :b])))
+      (is (true?  (validation-fn [:a]))))
     
     (deftest subset-of-defaults
       (is (= msg "not a subset of :a or :b"))
