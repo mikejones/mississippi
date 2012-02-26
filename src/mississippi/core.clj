@@ -2,12 +2,12 @@
   (:use [clojure.string :only (blank?)]
         [clojure.set :only (difference subset?)]))
 
-;; (defn- to-sentence
-;;   [lat]
-;;   (let [to-csv (fn [x] (apply str (interpose ", " x)))]
-;;     (if (< (count lat) 2)
-;;       (to-csv lat)
-;;       (str (to-csv (butlast lat)) " or " (last lat)))))
+(defn- to-sentence
+  [lat]
+  (let [to-csv (fn [x] (apply str (interpose ", " x)))]
+    (if (< (count lat) 2)
+      (to-csv lat)
+      (str (to-csv (butlast lat)) " or " (last lat)))))
 
 ;; (defn- build-valiation-fn
 ;;   "Build a valiation fn that accepts a value and returns nil if the validation passes
@@ -28,20 +28,6 @@
 ;;           (msg v)
 ;;           msg)))))
 
-;; (defn required
-;;   "Validates given value has been provided. Opts
-;;     :allow-blank  a boolean dictating whether a blank string is allowed, defaults to true
-;;     :when-fn      (see build-valiation-fn)
-;;     :msg          (see build-valiation-fn)"
-;;   [& {:keys [msg when-fn allow-blank] :or {allow-blank true, msg "required"}}]
-;;   (build-valiation-fn {:valid-fn (fn [v] (if allow-blank
-;;                                           (not (nil? v))
-;;                                           (not (blank? v))
-                                          
-;;                                           ))
-;;                        :msg        msg
-;;                        :when-fn    when-fn}))
-
 ;; (defn blank
 ;;   "Returns a fn that validates given string value is blank."
 ;;   [& {:keys [message-fn when-fn]}]
@@ -49,20 +35,23 @@
 ;;                        :mgs      (or message-fn "not blank")
 ;;                        :when-fn  when-fn}))
 
-;; (defn numeric
-;;   "Validates given value is an instance of Number."
-;;   [& {:keys [message-fn when-fn]}]
-;;   (build-valiation-fn {:validation #(instance? Number %)
-;;                        :message-fn (or message-fn (constantly "not a number"))
-;;                        :when-fn    when-fn}))
+(defn numeric
+  "Validates given value is an instance of Number."
+  [& {msg :msg when-fn :when}]
+  [(fn [v] (instance? Number v))
+   :msg (or msg "not a number")
+   :when when-fn])
 
-;; (defn member-of
-;;   "Validates the value v is contained in s (will be coerced to a set)."
-;;   [s & {:keys [message-fn when-fn]}]
-;;   (build-valiation-fn {:validation (fn [v] (some #{v} (set s)))
-;;                        :message-fn (or message-fn
-;;                                        (constantly (str "not a member of " (to-sentence s))))
-;;                        :when-fn    when-fn}))
+(defn required
+  [& {msg :msg when-fn :when}]
+  [(comp not nil?) :msg "required" :when when-fn])
+
+(defn member-of
+  "Validates the value v is contained in s (will be coerced to a set)."
+  [s & {msg :msg when-fn :when}]
+  [(comp not nil? (set s))
+   :msg (or msg (str "not a member of " (to-sentence s)))
+   :when when-fn])
 
 (defn in-range
   "Validates the value v falls between the range of start and end."
@@ -73,29 +62,29 @@
      :msg  (or msg
                (str "does not fall between " (first range) " and " (last range)))]))
 
-;; (defn subset-of
-;;   "Validates the value v is a subset of s. Both v and s will be coerced to sets."
-;;   [s & {:keys [message-fn when-fn]}] 
-;;   (build-valiation-fn {:validation (fn [v] (subset? (set v) (set s)))
-;;                        :message-fn (or message-fn
-;;                                        (constantly (str "not a subset of " (set s))))
-;;                        :when-fn    when-fn}))
+(defn subset-of
+  "Validates the value v is a subset of s. Both v and s will be coerced to sets."
+  [s & {msg :msg when-fn :when}]
+  [(fn [v] (subset? (set s) (set v)))
+   :msg (or msg (str "not a subset of " (to-sentence s)))
+   :when when-fn])
 
-;; (defn matches
-;;   "Validates the String value v matches the given Regexp re."
-;;   [re {:keys [message-fn when-fn]}]
-;;   (build-valiation-fn {:validation (fn [v] (re-find re (str v)))
-;;                        :message-fn (or message-fn
-;;                                        (constantly (str "does not match pattern of '" re "'")))
-;;                        :when-fn    when-fn}))
+(defn matches
+  "Validates the String value v matches the given Regexp re."
+  [re & {msg :msg when-fn :when}]
+  [(fn [v] (->> v str (re-find re) nil? not))
+   :msg (or msg (str "does not match pattern of '" re "'"))
+   :when when-fn])
 
-;; (defn matches-email
-;;   "Validates the String value v matches a basic email pattern."
-;;   [& {:keys [message-fn when-fn]}]
-;;   (build-valiation-fn {:validation #(re-find #"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}\b"
-;;                                              (str %))
-;;                        :message-fn (or message-fn (constantly "invalid email address"))
-;;                        :when-fn when-fn}))
+(def email-regex
+  #"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}\b")
+
+(defn matches-email
+  "Validates the String value v matches a basic email pattern."
+  [& {msg :msg when-fn :when}]
+  [(fn [v] (->> v str (re-find email-regex) nil? not))
+   :msg (or msg "invalid email address")
+   :when-fn when-fn])
 
 (defn- flatten-keys
   ([m] (flatten-keys {} [] m))
@@ -107,10 +96,6 @@
                     (seq m)))
        (assoc a ks m))))
 
-(defn required
-  [v]
-  ((comp not nil?) v))
-
 (defn- apply-validation
   [value subject [validate-fn & {when-fn :when msg :msg :or {when-fn (constantly true)}}]]
   (when (and (when-fn subject)
@@ -118,10 +103,12 @@
     msg))
 
 (defn errors
-  [subject validation-map]
-  (reduce (fn [errors [attr validations]]
+  [subject validations]
+  (reduce (fn [errors [attr attr-validations]]
             (let [value (get-in subject attr)]
-              (let [attr-errors (->> (if (every? vector? validations) validations [validations])
+              (let [attr-errors (->> (if (every? vector? attr-validations)
+                                       attr-validations
+                                       [attr-validations])
                                      (map (partial apply-validation value subject))
                                      flatten
                                      (remove nil?))]
@@ -129,7 +116,7 @@
                   (assoc-in errors attr attr-errors)
                   errors))))
           {}
-          (flatten-keys validation-map)))
+          (flatten-keys validations)))
 
 ;; (defn validate
 ;;   "Apply a map of validation functions to a Clojure map.

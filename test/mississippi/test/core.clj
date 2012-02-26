@@ -2,11 +2,6 @@
   (:use [mississippi.core] :reload)
   (:use [clojure.test]))
 
-(deftest required-validation
-  (is (true? (required "")))
-  (is (true? (required 1)))
-  (is (false? (required nil))))
-
 (testing "generating errors"
   (deftest adds-error-message-when-validation-check-fails
     (is (= {:a ["error message"]}
@@ -23,54 +18,85 @@
            (errors {:a ["error message"]}
                    {:a [(constantly false) :msg "error message"]})))))
 
-(testing "in-range validation builder"
-  (let [[validation-fn & {msg :msg when-fn :when}] (in-range 1 10)]
-    (deftest validation-fuction
-      (is (false? (validation-fn 0)))
-      (is (false? (validation-fn 10)))
-      (is (true? (validation-fn 9)))
-      (is (true? (validation-fn 1))))
-    (deftest message-default
-      (is (= "does not fall between 1 and 9" msg)))
-    (deftest there-is-no-predicate
+(testing "requied validation builder"
+  (let [[validation-fn & {msg :msg when-fn :when}] (required)]
+    (deftest required-validation
+      (is (true?  (validation-fn "")))
+      (is (true?  (validation-fn 1)))
+      (is (false? (validation-fn nil))))
+    
+    (deftest requried-defaults
+      (is (= "required" msg))
       (is (nil? when-fn)))))
 
-;; (testing "in-range validadtion builder"
+(testing "in-range validation builder"
+  (let [[validation-fn & {msg :msg when-fn :when}] (in-range 1 10)]
+    (deftest in-range-validation
+      (is (false? (validation-fn 0)))
+      (is (false? (validation-fn 10)))
+      (is (true?  (validation-fn 9)))
+      (is (true?  (validation-fn 1))))
+    (deftest in-range-defaults
+      (is (= msg "does not fall between 1 and 9"))
+      (is (nil? when-fn)))))
 
-  
-;;   (deftest outside-of-range
-;;     (let [r (validate { :a 11 }
-;;                       { :a [(in-range 1 10)]})]
-;;       (is (false? (valid? r)))
-;;       (is (= '("does not fall between 1 and 9")
-;;              (get-in r [:errors :a])))))
+(testing "member-of validation builder"
+  (let [[validation-fn & {msg :msg when-fn :when}] (member-of #{:a :b})]
+    (deftest member-of-validation
+      (is (false? (validation-fn 0)))
+      (is (false? (validation-fn :c)))
+      (is (true?  (validation-fn :a))))
+    
+    (deftest member-of-defaults
+      (is (= msg "not a member of :a or :b"))
+      (is (nil? when-fn)))))
 
-;;   (deftest non-numeric
-;;     (let [r (validate {:a "fail" }
-;;                       {:a [(in-range 1 10)]})]
-;;       (is (false? (valid? r)))
-;;       (is (= ["does not fall between 1 and 9"]
-;;              (get-in r [:errors :a])))))
+(testing "subset-of validation builder"
+  (let [[validation-fn & {msg :msg when-fn :when}] (subset-of #{:a :b})]
+    (deftest subset-of-validation
+      (is (false? (validation-fn [:a :c])))
+      (is (false? (validation-fn [:c])))
+      (is (true?  (validation-fn [:a :b]))))
+    
+    (deftest subset-of-defaults
+      (is (= msg "not a subset of :a or :b"))
+      (is (nil? when-fn)))))
 
-;;   (deftest error-message-is-cumtomisable
-;;     (let [r (validate {:a 12}
-;;                       {:a [(in-range 1 10
-;;                                      :message-fn (constantly "custom message"))]})]
-;;       (is (= '("custom message")
-;;              (get-in r [:errors :a]))))))
+(testing "matches validation builder"
+  (let [[validation-fn & {msg :msg when-fn :when}] (matches #"(?i)\b[A-Z]+\b")]
+    (deftest matches-validation
+      (is (false? (validation-fn "something1")))
+      (is (true?  (validation-fn "something"))))
+    
+    (deftest matches-defaults
+      (is (= msg "does not match pattern of '(?i)\\b[A-Z]+\\b'"))
+      (is (nil? when-fn)))))
 
+(testing "email validation builder"
+  (let [[validation-fn & {msg :msg when-fn :when}] (matches-email)]
+    (deftest matches-email-validation
+      (is (false? (validation-fn "not-an-email")))
+      (is (true?  (validation-fn "an-email@example.com"))))
+    
+    (deftest matches-defaults
+      (is (= msg "invalid email address"))
+      (is (nil? when-fn)))))
 
+(testing "numeric validation builder"
+  (let [[validation-fn & {msg :msg when-fn :when}] (numeric)]
+    (deftest numeric-validation
+      (is (false? (validation-fn "")))
+      (is (false? (validation-fn :a)))
+      (is (true?  (validation-fn 1))))
+    
+    (deftest numeric-defaults
+      (is (= msg "not a number"))
+      (is (nil? when-fn)))))
 
 ;; (testing "not blank validation"
 ;;   (deftest invalid-when-empty-string
 ;;     (is (valid? (validate {:a ""} {:a [(blank)]})))
 ;;     (is (not (valid? (validate {:a "test"} {:a [(blank)]}))))))
-
-;; (deftest sequence-only-contains-values-in-set
-;;   (is (false? (valid? (validate {:a [:a :b :c]}
-;;                                 {:a [(subset-of #{:a :b})]}))))
-;;   (is (valid? (validate {:a [:a :b]}
-;;                         {:a [(subset-of #{:a :b :c})]}))))
 
 ;; (testing "numeric validation"
 ;;   (deftest add-error-for-non-number-tpypes
@@ -91,30 +117,7 @@
 ;;       (is (= ["custom message"]
 ;;              (get-in r [:errors :a]))))))
 
-;; (testing "matches regular expression validation"
-;;   (deftest adds-error-when-attribut-does-not-match-regex
-;;     (is (false? (valid? (validate {:a "something1"}
-;;                                   {:a [(matches #"(?i)\b[A-Z]+\b")]}))))
-;;     (is (valid? (validate {:a "something"}
-;;                           {:a [(matches #"(?i)[A-Z]+")]})))
-;;     (deftest error-message-is-cumtomisable
-;;       (let [r (validate {:a nil}
-;;                         {:a [(matches #"(?i)[A-Z]+") :message-fn (constantly "custom message")]})]
-;;         (is (= '["custom message"]
-;;                (get-in r [:errors :a])))))))
 
-;; (testing "email validation"
-;;   (deftest adds-error-when-attribut-does-not-match-regex
-;;     (is (false? (valid? (validate {:a "not-an-email-address"}
-;;                                   {:a [(matches-email)]}))))
-;;     (is (valid? (validate {:a "mail@michaeljon.es"}
-;;                           {:a [(matches-email)]}))))
-
-;;   (deftest error-message-is-cumtomisable
-;;     (let [r (validate {:a nil}
-;;                       {:a [(matches-email :message-fn (constantly "custom message"))]})]
-;;       (is (= '["custom message"]
-;;              (get-in r [:errors :a]))))))
 
 ;; (testing "member of validation"
 ;;   (deftest is-not-valid-when-value-not-in-list
