@@ -30,14 +30,14 @@
     (is (= {:a ["required" "not a number"]}
            (errors {:a nil} {:a [(required) (numeric)]})))))
 
-(testing "requied validation builder"
+(testing "required validation builder"
   (let [[validation-fn & {msg :msg when-fn :when}] (required)]
     (deftest required-validation
       (is (true?  (validation-fn "")))
       (is (true?  (validation-fn 1)))
       (is (false? (validation-fn nil))))
     
-    (deftest requried-defaults
+    (deftest required-defaults
       (is (= "required" msg))
       (is (nil? when-fn)))))
 
