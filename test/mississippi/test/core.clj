@@ -15,8 +15,20 @@
 
   (deftest single-validations-dont-need-to-be-nested
     (is (= {:a ["error message"]}
-           (errors {:a ["error message"]}
-                   {:a [(constantly false) :msg "error message"]})))))
+           (errors {:a nil}
+                   {:a [(constantly false) :msg "error message"]}))))
+
+  (deftest can-specifiy-nested-validations-as-vector-of-values
+    (is (= {:a {:b ["error message"]}}
+           (errors {:a {:b nil}}
+                   {[:a :b] [(constantly false) :msg "error message"]}))))
+  (deftest using-validation-builders
+    (is (= {:a ["required"]}
+           (errors {:a nil} {:a (required)}))))
+
+  (deftest using-multiple-validation-builders
+    (is (= {:a ["required" "not a number"]}
+           (errors {:a nil} {:a [(required) (numeric)]})))))
 
 (testing "requied validation builder"
   (let [[validation-fn & {msg :msg when-fn :when}] (required)]
@@ -36,6 +48,7 @@
       (is (false? (validation-fn 10)))
       (is (true?  (validation-fn 9)))
       (is (true?  (validation-fn 1))))
+    
     (deftest in-range-defaults
       (is (= msg "does not fall between 1 and 9"))
       (is (nil? when-fn)))))
@@ -93,85 +106,3 @@
       (is (= msg "not a number"))
       (is (nil? when-fn)))))
 
-;; (testing "not blank validation"
-;;   (deftest invalid-when-empty-string
-;;     (is (valid? (validate {:a ""} {:a [(blank)]})))
-;;     (is (not (valid? (validate {:a "test"} {:a [(blank)]}))))))
-
-;; (testing "numeric validation"
-;;   (deftest add-error-for-non-number-tpypes
-;;     (let [r (validate {:a "not a number"}
-;;                       {:a [(numeric)]})]
-;;       (is (false? (valid? r)))
-;;       (is (= ["not a number"]
-;;              (get-in r [:errors :a] )))))
-;;   (deftest valid-types
-;;     (is (valid? (validate {:a 9}
-;;                           {:a [(numeric)]})))
-;;     (is (valid? (validate {:a 9.0}
-;;                           {:a [(numeric)]}))))
-
-;;   (deftest error-message-is-customisable
-;;     (let [r (validate {:a nil}
-;;                       {:a [(numeric :message-fn (constantly "custom message"))]})]
-;;       (is (= ["custom message"]
-;;              (get-in r [:errors :a]))))))
-
-
-
-;; (testing "member of validation"
-;;   (deftest is-not-valid-when-value-not-in-list
-;;     (is (not (valid? (validate {:a "d"}
-;;                                {:a [(member-of ["a" "b"])]})))))
-
-;;   (deftest is-valid-when-value-is-in-list
-;;     (is (valid? (validate {:a "a"}
-;;                           {:a [(member-of ["a" "b"])]}))))
-
-;;   (deftest default-message-should-list-valid-values
-;;     (let [r (validate {:a "a"}
-;;                       {:a [(member-of {:lat ["a" "b"]})]})]
-;;       (is "is not a member of a or b"
-;;           (get-in r [:errors :a]))))
-
-;;   (deftest error-message-is-cumtomisable
-;;     (let [r (validate {:a nil}
-;;                       {:a [(member-of ["a"]
-;;                                       :message-fn (constantly "custom message"))]})]
-;;       (is (= ["custom message"] (-> r :errors :a))))))
-
-
-;; (deftest multiple-validations
-;;   (let [r (validate {:a nil}
-;;                     {:a [(required) (numeric)] })]
-;;     (is (= {:a ["required" "not a number"]}
-;;            (:errors r)))))
-
-;; (deftest multiple-nested-validations
-;;   (let [o { :a { :b { :c nil :d 1 :e nil}}}
-;;         r (validate o {:a {:b {:c [(required)]
-;;                                :d [(required) (numeric)]
-;;                                :e [(required)]}}})]
-;;     (is (false? (valid? r)))
-;;     (is (= {:a {:b {:c ["required"] :e ["required"]}}}
-;;            (:errors r)))))
-
-;; (testing "nested attributes"
-;;   (deftest are-not-valid
-;;     (let [o { :a { :b { :c nil}}}
-;;           r (validate o {[:a :b :c] [(required)]})]
-;;       (is (not (valid? r)))))
-
-;;   (deftest are-valid
-;;     (let [o { :a { :b { :c "foo"}}}
-;;           r (validate o {[:a :b :c] [(required)]})]
-;;       (is (valid? r)))))
-
-;; (testing "functions have access to the subject and attr"
-;;   (let [has-b-key?  (fn [subject] (and (some #{:b} (keys subject))
-;;                                 (= [:a] *attr*)))
-;;         validations {:a [(required :when-fn has-b-key?)]}]
-;;     (deftest runs-validations
-;;       (is (valid? (validate {:a nil} validations)))
-;;       (is (not (valid? (validate {:a nil :b ""} validations)))))))
-  

@@ -9,32 +9,6 @@
       (to-csv lat)
       (str (to-csv (butlast lat)) " or " (last lat)))))
 
-;; (defn- build-valiation-fn
-;;   "Build a valiation fn that accepts a value and returns nil if the validation passes
-;;    or a string describing the error if it fails.
-
-;;    :when-fn  a predicate function, accepting the subject under test, and returning
-;;              if the validation should be applied 
-;;    :valid-fn a function, accepting the value being tested, and returning a
-;;              boolean indicating if the value was valid
-;;    :msg      either a string or a function used the message when the validation fails.
-;;              If a function accepts a single argument of the value being validated"
-;;   [{:keys [valid-fn msg when-fn]}]
-;;   (let [when-fn (or when-fn (constantly true))]
-;;     (fn [v]
-;;       (when (and (when-fn *subject*)
-;;                  (not (valid-fn v)))
-;;         (if (ifn? msg)
-;;           (msg v)
-;;           msg)))))
-
-;; (defn blank
-;;   "Returns a fn that validates given string value is blank."
-;;   [& {:keys [message-fn when-fn]}]
-;;   (build-valiation-fn {:valid-fn blank?
-;;                        :mgs      (or message-fn "not blank")
-;;                        :when-fn  when-fn}))
-
 (defn numeric
   "Validates given value is an instance of Number."
   [& {msg :msg when-fn :when}]
@@ -97,12 +71,65 @@
        (assoc a ks m))))
 
 (defn- apply-validation
-  [value subject [validate-fn & {when-fn :when msg :msg :or {when-fn (constantly true)}}]]
-  (when (and (when-fn subject)
+  [value subject [validate-fn & {when-fn :when msg :msg}]]
+  (when (and ((or when-fn (constantly true)) subject)
              (not (validate-fn value)))
     msg))
 
 (defn errors
+  "Apply a map of validations to a Clojure map.
+
+  Validations should be a map where the key is the attribute in the
+  subject map to be validated and the value is a vector of
+  validation information to apply to the value in the subject map.
+
+  Validation data should be in the following format. The first
+  element is a function accepting  a single arugment and returnsing a
+  boolean indicating if the value is valid. Subsequent values should be
+  pairs of options. Valid options are:
+
+   :when  a predicate function, accepting the subject under test, and returning
+          if the validation should be applied 
+   :msg   either a string or a function used the message when the validation fails.
+          If a function accepts a single argument of the value being validated
+
+  For example, given a subject of:
+
+  {:a \"some string\"}
+
+  A possible validations map could be:
+
+  {:a [(comp not nil?) :msg \"you forgot to supply a value\"] }
+
+  A number of builders for common validations have been provided they accept
+  the same options and are applied in the same way.
+
+  In the example above the validation could be replaced by:
+
+  {:a (required :msg \"you forgot to supply a value\")]}
+
+  Multiple validations can be provided by supplying a vector of vectors containing
+  validation data. For example for the subject:
+
+  {:a 1}
+
+  A possible validation map could be
+
+  {:a [(required) (numeric)]}
+
+  The function returns a map containing the messages of the validation failures or an
+  empty map. For example:
+
+  (errors {:a nil} {:a (required)}
+
+  Returns
+
+  {:a [\"required\"]}
+
+  
+  Note: an alternative syntax for validating nested attributes is to provide the key as a vector:
+
+  {[:c :d] [(required)]}"
   [subject validations]
   (reduce (fn [errors [attr attr-validations]]
             (let [value (get-in subject attr)]
@@ -118,33 +145,12 @@
           {}
           (flatten-keys validations)))
 
-;; (defn validate
-;;   "Apply a map of validation functions to a Clojure map.
+(defn validate
+  [subject validations]
+  (assoc subject :errors (errors subject validations)))
 
-;;   Validations should be a map where the key is the attribute in the
-;;   subject map to be validated, and the value is a sequence of
-;;   validation functions to apply to the value in the subject map. For
-;;   example, given a subject of:
-
-;;   {:a \"some string\"
-;;    :b 12
-;;    :c {:d nil}}
-
-;;   A possible validations map could be:
-
-;;   {:a [(required)]
-;;    :b [(required) (numeric :message-fn (fn [v] (str % \" is not a number\")))]
-;;    :c {:d [(required :when-fn (fn [_] (some #{:a} (keys *subject*)]}}
-
-;;   An alternative syntax for validating nested attributes is to provide the key as a vector:
-
-;;   {[:c :d] [(required)]}"
-;;   [subject validations]
-;;   (assoc subject
-;;     :errors (errors subject validations)))
-
-;; (defn valid?
-;;   "Checks if the map contains any errors"
-;;   [resource]
-;;   (empty? (:errors resource)))
+(defn valid?
+  "Checks if the map contains any errors"
+  [resource]
+  (empty? (:errors resource)))
 
