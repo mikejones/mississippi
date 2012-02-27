@@ -98,7 +98,7 @@ Mississippi is hosted on [Clojars](http://www.clojars.org).
 
 Add the following to `:dependencies` in your `project.clj`
 
-    [mississippi "0.1.0"]
+    [mississippi "1.0.0"]
 
 ## License
 
