@@ -71,8 +71,8 @@ validation.
 
 Several common-case validators are built-in for your convenience! All
 are functions which return a validation vector and support the `:when`
-and `:msg` options. Validation functions which take arguments are
-shown with an example.
+and `:msg` options, they do however provide sensible default messages.
+Validation functions that take arguments are shown with an example.
 
     numeric
     required
@@ -81,6 +81,14 @@ shown with an example.
     subset-of     ;; (subset-of #{:a :b :c})
     matches       ;; (matches #"foo")
     matches-email
+
+An example usage:
+
+    user> (def validations {:a [(required)
+                                (numeric)
+                                (in-range 1 10)]})
+    user> (validate {:a nil} validations)
+    {:errors {:a ("required" "not a number" "does not fall between 1 and 9")}}
 
 ## Installation
 
