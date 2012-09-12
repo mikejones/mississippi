@@ -18,7 +18,9 @@
 
 (defn required
   [& {msg :msg when-fn :when}]
-  [(comp not nil?) :msg "required" :when when-fn])
+  [(comp not nil?) 
+   :msg (or msg "required")
+   :when when-fn])
 
 (defn member-of
   "Validates the value v is contained in s (will be coerced to a set)."
