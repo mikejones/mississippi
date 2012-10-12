@@ -120,7 +120,7 @@ Mississippi is hosted on [Clojars](http://www.clojars.org).
 Add the following to `:dependencies` in your `project.clj`
 
 ```clojure
-[mississippi "1.0.0"]
+[mississippi "1.0.1"]
 ```
 
 ## License
