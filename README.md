@@ -107,6 +107,10 @@ user> (validate {:a nil} validations)
 {:errors {:a ("required" "not a number" "does not fall between 1 and 9")}}
 ```
 
+The `matches` validator takes an extra optional argument of
+`:match-fn`. This defaults to re-find, but you can override to use
+others such as `re-seq` or re-matches` if desired.
+
 ## Installation
 
 Mississippi is hosted on [Clojars](http://www.clojars.org).
