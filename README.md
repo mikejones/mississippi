@@ -109,7 +109,7 @@ user> (validate {:a nil} validations)
 
 The `matches` validator takes an extra optional argument of
 `:match-fn`. This defaults to re-find, but you can override to use
-others such as `re-seq` or re-matches` if desired.
+others such as `re-seq` or `re-matches` if desired.
 
 ## Installation
 
