@@ -18,7 +18,7 @@
 
 (defn required
   [& {msg :msg when-fn :when}]
-  [(comp not nil?) 
+  [(comp not nil?)
    :msg (or msg "required")
    :when when-fn])
 
@@ -46,14 +46,16 @@
    :when when-fn])
 
 (defn matches
-  "Validates the String value v matches the given Regexp re."
-  [re & {msg :msg when-fn :when}]
-  [(fn [v] (->> v str (re-find re) nil? not))
-   :msg (or msg (str "does not match pattern of '" re "'"))
-   :when when-fn])
+  "Validates the String value v matches the given Regexp re. Takes an
+  optional match-fn, defaulting to re-find."
+  [re & {msg :msg when-fn :when match-fn :match-fn}]
+  (let [match-fn (or match-fn re-find)]
+    [(fn [v] (->> v str (match-fn re) nil? not))
+     :msg (or msg (str "does not match pattern of '" re "'"))
+     :when when-fn]))
 
 (def email-regex
-  #"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}\b")
+  #"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$")
 
 (defn matches-email
   "Validates the String value v matches a basic email pattern."
@@ -111,7 +113,7 @@
   pairs of options. Valid options are:
 
    :when  a predicate function, accepting the subject under test, and returning
-          if the validation should be applied 
+          if the validation should be applied
    :msg   either a string or a function used the message when the validation fails.
           If a function accepts a single argument of the value being validated
 
@@ -164,4 +166,3 @@
   "Checks if the map contains any errors"
   [resource]
   (empty? (:errors resource)))
-

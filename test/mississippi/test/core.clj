@@ -36,7 +36,7 @@
       (is (true?  (validation-fn "")))
       (is (true?  (validation-fn 1)))
       (is (false? (validation-fn nil))))
-    
+
     (deftest required-defaults
       (is (= "required" msg))
       (is (nil? when-fn)))))
@@ -48,7 +48,7 @@
       (is (false? (validation-fn 10)))
       (is (true?  (validation-fn 9)))
       (is (true?  (validation-fn 1))))
-    
+
     (deftest in-range-defaults
       (is (= msg "does not fall between 1 and 9"))
       (is (nil? when-fn)))))
@@ -59,7 +59,7 @@
       (is (false? (validation-fn 0)))
       (is (false? (validation-fn :c)))
       (is (true?  (validation-fn :a))))
-    
+
     (deftest member-of-defaults
       (is (= msg "not a member of :a or :b"))
       (is (nil? when-fn)))))
@@ -71,7 +71,7 @@
       (is (false? (validation-fn [:c])))
       (is (true?  (validation-fn [:a :b])))
       (is (true?  (validation-fn [:a]))))
-    
+
     (deftest subset-of-defaults
       (is (= msg "not a subset of :a or :b"))
       (is (nil? when-fn)))))
@@ -81,17 +81,28 @@
     (deftest matches-validation
       (is (false? (validation-fn "something1")))
       (is (true?  (validation-fn "something"))))
-    
+
     (deftest matches-defaults
       (is (= msg "does not match pattern of '(?i)\\b[A-Z]+\\b'"))
       (is (nil? when-fn)))))
+
+(deftest custom-match-function
+  (testing "uses custom function"
+    (let [[validation-fn & {match-fn :match-fn}] (matches #"foo\.bar" :match-fn re-matches)]
+      (is (false? (validation-fn "foo.bar.baz")))
+      (is (true?  (validation-fn "foo.bar")))))
+  (testing "defaults to re-find"
+    (let [[validation-fn] (matches #"foo\.bar")]
+      (is (true? (validation-fn "foo.bar.baz")))
+      (is (true? (validation-fn "foo.bar"))))))
 
 (testing "email validation builder"
   (let [[validation-fn & {msg :msg when-fn :when}] (matches-email)]
     (deftest matches-email-validation
       (is (false? (validation-fn "not-an-email")))
-      (is (true?  (validation-fn "an-email@example.com"))))
-    
+      (is (true?  (validation-fn "an-email@example.com")))
+      (is (false? (validation-fn "an-email@foo.com;with bobby tables"))))
+
     (deftest matches-defaults
       (is (= msg "invalid email address"))
       (is (nil? when-fn)))))
@@ -102,8 +113,7 @@
       (is (false? (validation-fn "")))
       (is (false? (validation-fn :a)))
       (is (true?  (validation-fn 1))))
-    
+
     (deftest numeric-defaults
       (is (= msg "not a number"))
       (is (nil? when-fn)))))
-
