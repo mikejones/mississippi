@@ -1,5 +1,8 @@
 # mississippi
 
+<img src="https://github.com/downloads/mikejones/mississippi/small-logo.png"
+ alt="Mississippi Logo" title="The train to Mississippi" />
+
 Mississippi provides validation for maps.
 
 ## Usage
