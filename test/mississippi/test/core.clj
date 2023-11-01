@@ -82,13 +82,13 @@
 (deftest msg-can-be-function
   (is (= {:attr ["string of 'bah' is too short!"]}
          (c/errors {:attr "bah"}
-                   {:attr [(fn [s] (> (count s) 5))
-                           :msg (fn [s] (str "string of '" s "' is too short!"))]}))))
+                   {:attr [(fn [s _] (> (count s) 5))
+                           :msg (fn [s _] (str "string of '" s "' is too short!"))]}))))
 
 (deftest msg-can-be-constantly-function
   (is (= {:attr ["nope"]}
          (c/errors {:attr "bah"}
-                   {:attr [(fn [s] (> (count s) 5))
+                   {:attr [(fn [s _] (> (count s) 5))
                            :msg (constantly "nope")]}))))
 
 (deftest validation-function-and-msg-function-can-receive-subject-argument
@@ -101,7 +101,7 @@
                                   (str ":attr must be equal to 'bah' and subject should contain :other attribute. :attr: '" v "', subject: " subject))]}))))
 
 (deftest msg-function-can-take-subject-as-well-as-value
-  (let [validation [(fn [s] (> (count s) 5))
+  (let [validation [(fn [s _] (> (count s) 5))
                     :msg (fn [v s] (str "string of '" v "' is too short - and :other is '" (:other s) "'"))]
         result     (c/validate {:attr "bah"
                                 :other "fooooooo"}
@@ -143,4 +143,4 @@
                         {:x '()}]}
 
                    {:a (c/list-of-objects {:x [(c/required)
-                                               (c/list-of-objects {:x1 [(fn [x] (> x 0)) :msg "invalid"]} :when :x)]})}))))
+                                               (c/list-of-objects {:x1 [(fn [x _] (> x 0)) :msg "invalid"]} :when :x)]})}))))
