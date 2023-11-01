@@ -98,11 +98,13 @@ Validation functions that take arguments are shown with an example.
 ```clojure
 numeric
 required
-member-of     ;; (member-of #{:a :b :c})
-in-range      ;; (in-range 1 10)
-subset-of     ;; (subset-of #{:a :b :c})
-matches       ;; (matches #"foo")
+member-of       ;; (member-of #{:a :b :c})
+in-range        ;; (in-range 1 10)
+subset-of       ;; (subset-of #{:a :b :c})
+matches         ;; (matches #"foo")
 matches-email
+list-of-objects ;; (list-of-objects {:a [(required)]
+                ;;                   :b [(numeric)]})
 ```
 
 An example usage:
@@ -110,9 +112,14 @@ An example usage:
 ```clojure
 user> (def validations {:a [(required)
                             (numeric)
-                            (in-range 1 10)]})
-user> (validate {:a nil} validations)
-{:errors {:a ("required" "not a number" "does not fall between 1 and 9")}}
+                            (in-range 1 10)]
+                        :b [(list-of-objects {:x [(required) (numeric)] :y [(required) (numeric)]})]})
+user> (validate {:a nil :b [{:x 10 :y nil}]} validations)
+{:a nil,
+ :b [{:x 10}],
+ :errors
+ {:a ("required" "'' is not a number" "'' does not fall between 1 and 9"),
+  :b ({0 {:y ("required" "'' is not a number")}})}}
 ```
 
 The `matches` validator takes an extra optional argument of
@@ -128,7 +135,7 @@ Mississippi is hosted on [Clojars](http://www.clojars.org).
 Add the following to `:dependencies` in your `project.clj`
 
 ```clojure
-[mississippi "1.0.1"]
+[mississippi "1.0.2"]
 ```
 
 ## License

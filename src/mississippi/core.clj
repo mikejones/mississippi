@@ -135,18 +135,20 @@
         validations (if (every? vector? validations)
                       validations
                       [validations])]
-    (->> validations
-         (map (partial apply-validation value subject))
-         flatten
-         (remove nil?))))
+    (into []
+          (comp (map (partial apply-validation value subject))
+                (remove nil?))
+          validations)))
 
 (defn errors
   [subject validations]
-  (->> (for [[attr attr-validations] (flatten-keys validations)
-             :let [attr-errors (errors-for subject attr attr-validations)]
-             :when (seq attr-errors)]
-         [attr attr-errors])
-       (reduce #(apply assoc-in %1 %2) {})))
+  (reduce (fn [res [attr attr-validations]]
+            (let [attr-errors (errors-for subject attr attr-validations)]
+              (if (seq attr-errors)
+                (assoc-in res attr attr-errors)
+                res)))
+          {}
+          (flatten-keys validations)))
 
 (defn validate
   "Apply a map of validations to a Clojure map.
