@@ -91,6 +91,15 @@
                    {:attr [(fn [s] (> (count s) 5))
                            :msg (constantly "nope")]}))))
 
+(deftest validation-function-and-msg-function-can-receive-subject-argument
+  (is (= {:attr [":attr must be equal to 'bah' and subject should contain :other attribute. :attr: 'bah', subject: {:attr \"bah\"}"]}
+         (c/errors {:attr "bah"}
+                   {:attr [(fn [v subject]
+                             (and (= "bah" v)
+                                  (contains? subject :other)))
+                           :msg (fn [v subject]
+                                  (str ":attr must be equal to 'bah' and subject should contain :other attribute. :attr: '" v "', subject: " subject))]}))))
+
 (deftest msg-function-can-take-subject-as-well-as-value
   (let [validation [(fn [s] (> (count s) 5))
                     :msg (fn [v s] (str "string of '" v "' is too short - and :other is '" (:other s) "'"))]

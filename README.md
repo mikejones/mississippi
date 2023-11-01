@@ -24,11 +24,15 @@ more validations defined.
 
 ## Defining Validations
 
-A validation is a vector containing: 
+A validation is a vector containing:
 
-* a predicate function determining if the attribute is valid or not (required)
-* a key value pair of :msg => function / string 
-* a key value pair of :when => function
+- a predicate function determining if the attribute is valid or not (required).
+  The function takes either a single argument of the value of the attribute, or
+  both the value of the attribute, and the whole subject under test.
+- a key value pair of :msg => function / string
+  If a function it has the same parameters as the validation function described
+  above.
+- a key value pair of :when => function
 
 For example:
 
@@ -53,13 +57,13 @@ for a given attribute:
 
 ```clojure
 {:foo [[(comp not nil?) :msg "required"]
-       [numeric?        :msg "non-numeric!"]]}
+       [numeric?        :msg #("'" % "' is non-numeric!")]]}
 ```
 
 Would produce:
 
 ```clojure
-{:foo nil :errors {:foo ("required" "non-numeric!")}}
+{:foo nil :errors {:foo ("required" "'' is non-numeric!")}}
 ```
 
 when applied to:
@@ -100,6 +104,7 @@ subset-of     ;; (subset-of #{:a :b :c})
 matches       ;; (matches #"foo")
 matches-email
 ```
+
 An example usage:
 
 ```clojure
@@ -131,4 +136,3 @@ Add the following to `:dependencies` in your `project.clj`
 Copyright (C) 2010 Michael Jones, Gareth Jones
 
 Distributed under the Eclipse Public License, the same as Clojure.
-
