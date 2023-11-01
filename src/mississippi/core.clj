@@ -1,6 +1,5 @@
 (ns mississippi.core
-  (:require [clojure.reflect :as reflect]
-            [clojure.set :refer [subset?]]
+  (:require [clojure.set :refer [subset?]]
             [clojure.string :as str]))
 
 (declare valid? validate)
@@ -106,13 +105,20 @@
                   (seq m)))
      (assoc a ks m))))
 
+(defn call-arities
+  [f value subject]
+  (try
+    (f value subject)
+    (catch clojure.lang.ArityException _
+      (f value))))
+
 (defn- apply-validation
   [value subject [validate-fn & {when-fn :when msg :msg}]]
   (let [when-fn (or when-fn (constantly true))]
     (when (and (when-fn subject)
-               (not (validate-fn value subject)))
+               (not (call-arities validate-fn value subject)))
       (if (fn? msg)
-        (msg value subject)
+        (call-arities msg value subject)
         msg))))
 
 (defn errors-for
@@ -144,15 +150,18 @@
   validation information to apply to the value in the subject map.
 
   Validation data should be in the following format. The first
-  element is a function accepting two arguments: the value being validated along with
-  the subject under test.
+  element is a function accepting:
+    - single argument: of the value being validated
+    - two arguments: the value being validated along with the subject under test.
   The return value should be a boolean indicating if the value is valid. 
   Subsequent values should be pairs of options. Valid options are:
 
    :when  a predicate function, accepting the subject under test, and returning
           if the validation should be applied
    :msg   either a string or a function used to generate the message when the validation fails.
-          If a function accepts two arguments: the value being validated along with the subject under test.
+          If a function accepts either:
+            - single argument: of the value being validated
+            - two arguments: the value being validated along with the subject under test.
 
   For example, given a subject of:
 
