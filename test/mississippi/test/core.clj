@@ -4,7 +4,8 @@
 
 (deftest adds-error-message-when-validation-check-fails
   (is (= {:a ["error message"]}
-         (c/errors {:a nil} {:a [[(constantly false) :msg "error message"]]}))))
+         (c/errors {:a nil}
+                   {:a [[(constantly false) :msg "error message"]]}))))
 
 (deftest allows-predicate-to-prevent-validation-based-on-subject-under-validation
   (letfn [(unless-has-b-key [subject] (-> subject keys #{:b}))]
@@ -31,53 +32,100 @@
          (c/errors {:a nil} {:a [(c/required) (c/numeric)]}))))
 
 (deftest required-validation
-  (is (= {} (c/errors {:a ""} {:a [(c/required)]})))
-  (is (= {} (c/errors {:a 1} {:a [(c/required)]}))))
+  (is (= {} (c/errors {:a ""}
+                      {:a [(c/required)]})))
+  (is (= {} (c/errors {:a 1}
+                      {:a [(c/required)]}))))
 
 (deftest in-range-validation
-  (is (= {:a ["'0' does not fall between 1 and 9"]} (c/errors {:a 0} {:a [(c/in-range 1 10)]})))
-  (is (= {:a ["'10' does not fall between 1 and 9"]} (c/errors {:a 10} {:a [(c/in-range 1 10)]})))
-  (is (= {} (c/errors {:a 1} {:a [(c/in-range 1 10)]})))
-  (is (= {} (c/errors {:a 9} {:a [(c/in-range 1 10)]}))))
+  (is (= {:a ["'0' does not fall between 1 and 9"]}
+         (c/errors {:a 0}
+                   {:a [(c/in-range 1 10)]})))
+  (is (= {:a ["'10' does not fall between 1 and 9"]}
+         (c/errors {:a 10}
+                   {:a [(c/in-range 1 10)]})))
+  (is (= {}
+         (c/errors {:a 1}
+                   {:a [(c/in-range 1 10)]})))
+  (is (= {}
+         (c/errors {:a 9}
+                   {:a [(c/in-range 1 10)]}))))
 
 (deftest member-of-validation
-  (is (= {:a ["'0' is not a member of :a or :b"]} (c/errors {:a 0} {:a [(c/member-of #{:a :b})]})))
-  (is (= {:a ["':c' is not a member of :a or :b"]} (c/errors {:a :c} {:a [(c/member-of #{:a :b})]})))
-  (is (= {} (c/errors {:a :a} {:a [(c/member-of #{:a :b})]}))))
+  (is (= {:a ["'0' is not a member of :a or :b"]}
+         (c/errors {:a 0}
+                   {:a [(c/member-of #{:a :b})]})))
+  (is (= {:a ["':c' is not a member of :a or :b"]}
+         (c/errors {:a :c}
+                   {:a [(c/member-of #{:a :b})]})))
+  (is (= {}
+         (c/errors {:a :a}
+                   {:a [(c/member-of #{:a :b})]}))))
 
 (deftest subset-of-validation
-  (is (= {:a ["'[:a :c]' is not a subset of :a or :b"]} (c/errors {:a [:a :c]} {:a [(c/subset-of #{:a :b})]})))
-  (is (= {:a ["'[:c]' is not a subset of :a or :b"]} (c/errors {:a [:c]} {:a [(c/subset-of #{:a :b})]})))
-  (is (= {} (c/errors {:a [:a :b]} {:a [(c/subset-of #{:a :b})]})))
-  (is (= {} (c/errors {:a [:a]} {:a [(c/subset-of #{:a :b})]}))))
+  (is (= {:a ["'[:a :c]' is not a subset of :a or :b"]}
+         (c/errors {:a [:a :c]}
+                   {:a [(c/subset-of #{:a :b})]})))
+  (is (= {:a ["'[:c]' is not a subset of :a or :b"]}
+         (c/errors {:a [:c]}
+                   {:a [(c/subset-of #{:a :b})]})))
+  (is (= {}
+         (c/errors {:a [:a :b]}
+                   {:a [(c/subset-of #{:a :b})]})))
+  (is (= {}
+         (c/errors {:a [:a]}
+                   {:a [(c/subset-of #{:a :b})]}))))
 
 (deftest matches-validation
   (is (= {:a ["'something1' does not match pattern of '(?i)\\b[A-Z]+\\b'"]}
-         (c/errors {:a "something1"} {:a [(c/matches #"(?i)\b[A-Z]+\b")]})))
+         (c/errors {:a "something1"}
+                   {:a [(c/matches #"(?i)\b[A-Z]+\b")]})))
   (is (= {}
-         (c/errors {:a "something"} {:a [(c/matches #"(?i)\b[A-Z]+\b")]})))
+         (c/errors {:a "something"}
+                   {:a [(c/matches #"(?i)\b[A-Z]+\b")]})))
 
   (is (= {:a ["'foo.bar.baz' does not match pattern of 'foo\\.bar'"]}
          (c/errors {:a "foo.bar.baz"}
                    {:a (c/matches #"foo\.bar" :match-fn re-matches)})))
   (is (= {}
-         (c/errors {:a "foo.bar"} {:a (c/matches #"foo\.bar" :match-fn re-matches)}))))
+         (c/errors {:a "foo.bar"}
+                   {:a (c/matches #"foo\.bar" :match-fn re-matches)}))))
 
 (deftest matches-email-validation
-  (is (= {:a ["'not-an-email' is not a valid email address"]} (c/errors {:a "not-an-email"} {:a (c/matches-email)})))
-  (is (= {:a ["'an-email@foo.com;with bobby tables' is not a valid email address"]} (c/errors {:a "an-email@foo.com;with bobby tables"} {:a (c/matches-email)})))
-  (is (= {} (c/errors {:a "an-email@example.com"} {:a (c/matches-email)}))))
+  (is (= {:a ["'not-an-email' is not a valid email address"]}
+         (c/errors {:a "not-an-email"}
+                   {:a (c/matches-email)})))
+  (is (= {:a ["'an-email@foo.com;with bobby tables' is not a valid email address"]}
+         (c/errors {:a "an-email@foo.com;with bobby tables"}
+                   {:a (c/matches-email)})))
+  (is (= {}
+         (c/errors {:a "an-email@example.com"}
+                   {:a (c/matches-email)}))))
 
 (deftest numeric-validation
-  (is (= {:a ["'' is not a number"]} (c/errors {:a ""} {:a (c/numeric)})))
-  (is (= {:a ["':a' is not a number"]} (c/errors {:a :a} {:a (c/numeric)})))
-  (is (= {} (c/errors {:a 1} {:a (c/numeric)}))))
+  (is (= {:a ["'' is not a number"]}
+         (c/errors {:a ""}
+                   {:a (c/numeric)})))
+  (is (= {:a ["':a' is not a number"]}
+         (c/errors {:a :a}
+                   {:a (c/numeric)})))
+  (is (= {}
+         (c/errors {:a 1}
+                   {:a (c/numeric)}))))
 
 (deftest test-non-empty-list
-  (is (= {:a ["'' must be a list containing at least one item"]} (c/errors {:a nil} {:a (c/non-empty-list)})))
-  (is (= {:a ["'[]' must be a list containing at least one item"]} (c/errors {:a []} {:a (c/non-empty-list)})))
-  (is (= {:a ["'' must be a list containing at least one item"]} (c/errors {:a nil} {:a (c/non-empty-list)})))
-  (is (= {} (c/errors {:a [1]} {:a (c/non-empty-list)}))))
+  (is (= {:a ["'' must be a list containing at least one item"]}
+         (c/errors {:a nil}
+                   {:a (c/non-empty-list)})))
+  (is (= {:a ["'[]' must be a list containing at least one item"]}
+         (c/errors {:a []}
+                   {:a (c/non-empty-list)})))
+  (is (= {:a ["'' must be a list containing at least one item"]}
+         (c/errors {:a nil}
+                   {:a (c/non-empty-list)})))
+  (is (= {}
+         (c/errors {:a [1]}
+                   {:a (c/non-empty-list)}))))
 
 (deftest msg-can-be-function
   (is (= {:attr ["string of 'bah' is too short!"]}

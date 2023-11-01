@@ -84,12 +84,12 @@
    :msg (or msg
             (fn [vs _]
               (if (sequential? vs)
-                (let [errors (into {}
-                                   (comp (map-indexed (fn [i o] [i (validate o child-validations-map)]))
-                                         (map (fn [[i o]] [i (:errors o)]))
-                                         (map (fn [[i e]] (if (empty? e) nil [i e]))))
-                                   vs)]
-                  errors)
+                (into {}
+                      (map-indexed (fn [i o]
+                                     (let [errors (-> o (validate child-validations-map) :errors)]
+                                       (when (seq errors)
+                                         [i errors]))))
+                      vs)
                 (str "'" vs "' is not a list of objects"))))
    :when when-fn])
 
@@ -105,7 +105,7 @@
                   (seq m)))
      (assoc a ks m))))
 
-(defn call-arities
+(defn- call-arities
   [f value subject]
   (try
     (f value subject)
@@ -121,7 +121,7 @@
         (call-arities msg value subject)
         msg))))
 
-(defn errors-for
+(defn- errors-for
   [subject attr validations]
   (let [value       (get-in subject attr)
         validations (if (every? vector? validations)
