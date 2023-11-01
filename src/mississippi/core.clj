@@ -1,19 +1,21 @@
 (ns mississippi.core
-  (:use [clojure.string :only (blank?)]
-        [clojure.set :only (difference subset?)]))
+  (:require [clojure.reflect :as reflect]
+            [clojure.set :refer [subset?]]
+            [clojure.string :as str]))
+
+(declare valid? validate)
 
 (defn- to-sentence
   [lat]
-  (let [to-csv (fn [x] (apply str (interpose ", " x)))]
-    (if (< (count lat) 2)
-      (to-csv lat)
-      (str (to-csv (butlast lat)) " or " (last lat)))))
+  (if (< (count lat) 2)
+    (str/join ", " lat)
+    (str (str/join ", " (butlast lat)) " or " (last lat))))
 
 (defn numeric
   "Validates given value is an instance of Number."
   [& {msg :msg when-fn :when}]
   [(fn [v] (instance? Number v))
-   :msg (or msg "not a number")
+   :msg (or msg #(str "'" % "' is not a number"))
    :when when-fn])
 
 (defn required
@@ -26,7 +28,7 @@
   "Validates the value v is contained in s (will be coerced to a set)."
   [s & {msg :msg when-fn :when}]
   [(comp not nil? (set s))
-   :msg (or msg (str "not a member of " (to-sentence s)))
+   :msg (or msg #(str "'" % "' is not a member of " (to-sentence (sort s))))
    :when when-fn])
 
 (defn in-range
@@ -36,13 +38,13 @@
     [(comp not nil? (set range))
      :when when-fn
      :msg  (or msg
-               (str "does not fall between " (first range) " and " (last range)))]))
+               #(str "'" % "' does not fall between " (first range) " and " (last range)))]))
 
 (defn subset-of
   "Validates the value v is a subset of s. Both v and s will be coerced to sets."
   [s & {msg :msg when-fn :when}]
   [(fn [v] (subset? (set v) (set s)))
-   :msg (or msg (str "not a subset of " (to-sentence s)))
+   :msg (or msg #(str "'" % "' is not a subset of " (to-sentence (sort s))))
    :when when-fn])
 
 (defn matches
@@ -51,7 +53,7 @@
   [re & {msg :msg when-fn :when match-fn :match-fn}]
   (let [match-fn (or match-fn re-find)]
     [(fn [v] (->> v str (match-fn re) nil? not))
-     :msg (or msg (str "does not match pattern of '" re "'"))
+     :msg (or msg #(str "'" % "' does not match pattern of '" re "'"))
      :when when-fn]))
 
 (def email-regex
@@ -61,29 +63,75 @@
   "Validates the String value v matches a basic email pattern."
   [& {msg :msg when-fn :when}]
   [(fn [v] (->> v str (re-find email-regex) nil? not))
-   :msg (or msg "invalid email address")
-   :when-fn when-fn])
+   :msg (or msg #(str "'" % "' is not a valid email address"))
+   :when when-fn])
+
+(defn non-empty-list
+  "Validates the attribute contains a non-empty list."
+  [& {msg :msg when-fn :when}]
+  [(fn [v] (and (not (nil? v))
+                (sequential? v)
+                (> (count v) 0)))
+   :msg (or msg #(str "'" % "' must be a list containing at least one item"))
+   :when when-fn])
+
+(defn list-of-objects
+  "Validates the attribute contains a list of objects that match the provided validations.
+   Can be nested as required."
+  [child-validations-map & {msg :msg when-fn :when}]
+  [(fn [vs]
+     (and (sequential? vs)
+          (every? #(valid? (validate % child-validations-map)) vs)))
+   :msg (or msg
+            (fn [vs]
+              (if (sequential? vs)
+                (let [errors (into {}
+                                   (comp (map-indexed (fn [i o] [i (validate o child-validations-map)]))
+                                         (map (fn [[i o]] [i (:errors o)]))
+                                         (map (fn [[i e]] (if (empty? e) nil [i e]))))
+                                   vs)]
+                  errors)
+                (str "'" vs "' is not a list of objects"))))
+   :when when-fn])
+
+;;
 
 (defn- flatten-keys
   ([m] (flatten-keys {} [] m))
   ([a ks m]
-     (if (map? m)
-       (reduce into
-               (map (fn [[k v]]
-                      (flatten-keys a (if (vector? k) (into ks k) (conj ks k)) v))
-                    (seq m)))
-       (assoc a ks m))))
+   (if (map? m)
+     (reduce into
+             (map (fn [[k v]]
+                    (flatten-keys a (if (vector? k) (into ks k) (conj ks k)) v))
+                  (seq m)))
+     (assoc a ks m))))
+
+(defn- parameter-count
+  [f]
+  (->> f
+       reflect/reflect
+       :members
+       (filter #(= 'invoke (:name %)))
+       first
+       :parameter-types
+       count))
 
 (defn- apply-validation
   [value subject [validate-fn & {when-fn :when msg :msg}]]
   (let [when-fn (or when-fn (constantly true))]
     (when (and (when-fn subject)
-               (not (validate-fn value)))
-      msg)))
+               (if (= 2 (parameter-count validate-fn))
+                 (not (validate-fn value subject))
+                 (not (validate-fn value))))
+      (if (fn? msg)
+        (if (= 2 (parameter-count msg))
+          (msg value subject)
+          (msg value))
+        msg))))
 
 (defn errors-for
   [subject attr validations]
-  (let [value (get-in subject attr)
+  (let [value       (get-in subject attr)
         validations (if (every? vector? validations)
                       validations
                       [validations])]
@@ -96,7 +144,7 @@
   [subject validations]
   (->> (for [[attr attr-validations] (flatten-keys validations)
              :let [attr-errors (errors-for subject attr attr-validations)]
-             :when (not (empty? attr-errors))]
+             :when (seq attr-errors)]
          [attr attr-errors])
        (reduce #(apply assoc-in %1 %2) {})))
 
@@ -108,14 +156,18 @@
   validation information to apply to the value in the subject map.
 
   Validation data should be in the following format. The first
-  element is a function accepting  a single arugment and returning a
-  boolean indicating if the value is valid. Subsequent values should be
-  pairs of options. Valid options are:
+  element is a function accepting either:
+    - a single argument of the value being validated, or
+    - two arguments of the value being validated along with the subject under test.
+  The return value should be a boolean indicating if the value is valid. 
+  Subsequent values should be pairs of options. Valid options are:
 
    :when  a predicate function, accepting the subject under test, and returning
           if the validation should be applied
-   :msg   either a string or a function used the message when the validation fails.
-          If a function accepts a single argument of the value being validated
+   :msg   either a string or a function used to generate the message when the validation fails.
+          If a function accepts either:
+            - a single argument of the value being validated, or
+            - two arguments of the value being validated along with the subject under test.
 
   For example, given a subject of:
 
@@ -139,7 +191,7 @@
 
   A possible validation map could be
 
-  {:a [(required) (numeric)]}
+  {:a [(required) (numeric :msg (fn [v] (str \"'\" v \"' is not a number\")))]}
 
   The function returns a map containing the messages of the validation failures or an
   empty map. For example:
@@ -166,3 +218,4 @@
   "Checks if the map contains any errors"
   [resource]
   (empty? (:errors resource)))
+

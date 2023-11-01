@@ -5,3 +5,8 @@ classes
 .\#*
 \#*
 .lein*
+.calva
+.clj-kondo
+.lsp
+.nrepl-port
+target
