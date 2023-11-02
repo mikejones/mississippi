@@ -12,7 +12,7 @@ A simple example:
 ```clojure
 user> (use 'mississippi.core)
 user> (def subject {:a nil :b 1})
-user> (def validations {:a [(fn [v _] (not (nil? v))) :msg "required"]
+user> (def validations {:a [(comp not nil? v) :msg "required"]
                         :b [number? :msg "not numeric"]})
 user> (validate subject validations)
 {:a nil, :b 1, :errors {:a ("required")}}
@@ -80,7 +80,7 @@ on another inter-related attribute. This is achieved through the
 
 ```clojure
 user> (def subject {:a 501 :b :low})
-user> (def validations {:a [(fn [v _] (< v 500)) :msg "too high!" :when #(= :low (:b %))]})
+user> (def validations {:a [(fn [v] (< v 500)) :msg "too high!" :when #(= :low (:b %))]})
 user> (validate subject validations)
 {:a 501, :b :low, :errors {:a ("too high!")}}
 ```
