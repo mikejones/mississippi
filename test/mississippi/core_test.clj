@@ -1,4 +1,4 @@
-(ns mississippi.test.core
+(ns mississippi.core-test
   (:require [mississippi.core :as c]
             [clojure.test :refer [deftest is]] :reload-all))
 
@@ -28,7 +28,7 @@
          (c/errors {:a nil} {:a (c/required)}))))
 
 (deftest using-multiple-validation-builders
-  (is (= {:a ["required" "'' is not a number"]}
+  (is (= {:a ["required" "not a number"]}
          (c/errors {:a nil} {:a [(c/required) (c/numeric)]}))))
 
 (deftest required-validation
@@ -38,10 +38,10 @@
                       {:a [(c/required)]}))))
 
 (deftest in-range-validation
-  (is (= {:a ["'0' does not fall between 1 and 9"]}
+  (is (= {:a ["does not fall between 1 and 9"]}
          (c/errors {:a 0}
                    {:a [(c/in-range 1 10)]})))
-  (is (= {:a ["'10' does not fall between 1 and 9"]}
+  (is (= {:a ["does not fall between 1 and 9"]}
          (c/errors {:a 10}
                    {:a [(c/in-range 1 10)]})))
   (is (= {}
@@ -52,10 +52,10 @@
                    {:a [(c/in-range 1 10)]}))))
 
 (deftest member-of-validation
-  (is (= {:a ["'0' is not a member of :a or :b"]}
+  (is (= {:a ["not a member of :a or :b"]}
          (c/errors {:a 0}
                    {:a [(c/member-of #{:a :b})]})))
-  (is (= {:a ["':c' is not a member of :a or :b"]}
+  (is (= {:a ["not a member of :a or :b"]}
          (c/errors {:a :c}
                    {:a [(c/member-of #{:a :b})]})))
   (is (= {}
@@ -63,10 +63,10 @@
                    {:a [(c/member-of #{:a :b})]}))))
 
 (deftest subset-of-validation
-  (is (= {:a ["'[:a :c]' is not a subset of :a or :b"]}
+  (is (= {:a ["not a subset of :a or :b"]}
          (c/errors {:a [:a :c]}
                    {:a [(c/subset-of #{:a :b})]})))
-  (is (= {:a ["'[:c]' is not a subset of :a or :b"]}
+  (is (= {:a ["not a subset of :a or :b"]}
          (c/errors {:a [:c]}
                    {:a [(c/subset-of #{:a :b})]})))
   (is (= {}
@@ -77,14 +77,14 @@
                    {:a [(c/subset-of #{:a :b})]}))))
 
 (deftest matches-validation
-  (is (= {:a ["'something1' does not match pattern of '(?i)\\b[A-Z]+\\b'"]}
+  (is (= {:a ["does not match pattern of '(?i)\\b[A-Z]+\\b'"]}
          (c/errors {:a "something1"}
                    {:a [(c/matches #"(?i)\b[A-Z]+\b")]})))
   (is (= {}
          (c/errors {:a "something"}
                    {:a [(c/matches #"(?i)\b[A-Z]+\b")]})))
 
-  (is (= {:a ["'foo.bar.baz' does not match pattern of 'foo\\.bar'"]}
+  (is (= {:a ["does not match pattern of 'foo\\.bar'"]}
          (c/errors {:a "foo.bar.baz"}
                    {:a (c/matches #"foo\.bar" :match-fn re-matches)})))
   (is (= {}
@@ -92,10 +92,10 @@
                    {:a (c/matches #"foo\.bar" :match-fn re-matches)}))))
 
 (deftest matches-email-validation
-  (is (= {:a ["'not-an-email' is not a valid email address"]}
+  (is (= {:a ["invalid email address"]}
          (c/errors {:a "not-an-email"}
                    {:a (c/matches-email)})))
-  (is (= {:a ["'an-email@foo.com;with bobby tables' is not a valid email address"]}
+  (is (= {:a ["invalid email address"]}
          (c/errors {:a "an-email@foo.com;with bobby tables"}
                    {:a (c/matches-email)})))
   (is (= {}
@@ -103,10 +103,10 @@
                    {:a (c/matches-email)}))))
 
 (deftest numeric-validation
-  (is (= {:a ["'' is not a number"]}
+  (is (= {:a ["not a number"]}
          (c/errors {:a ""}
                    {:a (c/numeric)})))
-  (is (= {:a ["':a' is not a number"]}
+  (is (= {:a ["not a number"]}
          (c/errors {:a :a}
                    {:a (c/numeric)})))
   (is (= {}
@@ -114,13 +114,13 @@
                    {:a (c/numeric)}))))
 
 (deftest test-non-empty-list
-  (is (= {:a ["'' must be a list containing at least one item"]}
+  (is (= {:a ["must be a list containing at least one item"]}
          (c/errors {:a nil}
                    {:a (c/non-empty-list)})))
-  (is (= {:a ["'[]' must be a list containing at least one item"]}
+  (is (= {:a ["must be a list containing at least one item"]}
          (c/errors {:a []}
                    {:a (c/non-empty-list)})))
-  (is (= {:a ["'' must be a list containing at least one item"]}
+  (is (= {:a ["must be a list containing at least one item"]}
          (c/errors {:a nil}
                    {:a (c/non-empty-list)})))
   (is (= {}
@@ -180,7 +180,7 @@
   (is (= {:a [{0 {:x [{0 {:x1 ["invalid"]}}]}
                2 {:x [{1 {:x1 ["invalid"]}}]}
                4 {:x ["required"]}
-               5 {:x ["'a string?' is not a list of objects"]}}]}
+               5 {:x ["not a list of objects"]}}]}
 
          (c/errors {:a [{:x [{:x1 -10}]}
                         {:x [{:x1 1}]}

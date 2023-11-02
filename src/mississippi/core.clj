@@ -14,7 +14,7 @@
   "Validates given value is an instance of Number."
   [& {msg :msg when-fn :when}]
   [(fn [v _] (instance? Number v))
-   :msg (or msg (fn [v _] (str "'" v "' is not a number")))
+   :msg (or msg "not a number")
    :when when-fn])
 
 (defn required
@@ -27,7 +27,7 @@
   "Validates the value v is contained in s (will be coerced to a set)."
   [s & {msg :msg when-fn :when}]
   [(fn [v _] (contains? (set s) v))
-   :msg (or msg (fn [v _] (str "'" v "' is not a member of " (to-sentence (sort s)))))
+   :msg (or msg (str "not a member of " (to-sentence (sort s))))
    :when when-fn])
 
 (defn in-range
@@ -37,13 +37,13 @@
     [(fn [v _] (contains? (set range) v))
      :when when-fn
      :msg  (or msg
-               (fn [v _] (str "'" v "' does not fall between " (first range) " and " (last range))))]))
+               (str "does not fall between " (first range) " and " (last range)))]))
 
 (defn subset-of
   "Validates the value v is a subset of s. Both v and s will be coerced to sets."
   [s & {msg :msg when-fn :when}]
   [(fn [v _] (subset? (set v) (set s)))
-   :msg (or msg (fn [v _] (str "'" v "' is not a subset of " (to-sentence (sort s)))))
+   :msg (or msg (str "not a subset of " (to-sentence (sort s))))
    :when when-fn])
 
 (defn matches
@@ -52,7 +52,7 @@
   [re & {msg :msg when-fn :when match-fn :match-fn}]
   (let [match-fn (or match-fn re-find)]
     [(fn [v _] (->> v str (match-fn re) nil? not))
-     :msg (or msg (fn [v _] (str "'" v "' does not match pattern of '" re "'")))
+     :msg (or msg (str "does not match pattern of '" re "'"))
      :when when-fn]))
 
 (def email-regex
@@ -62,7 +62,7 @@
   "Validates the String value v matches a basic email pattern."
   [& {msg :msg when-fn :when}]
   [(fn [v _] (->> v str (re-find email-regex) nil? not))
-   :msg (or msg (fn [v _] (str "'" v "' is not a valid email address")))
+   :msg (or msg (str "invalid email address"))
    :when when-fn])
 
 (defn non-empty-list
@@ -71,7 +71,7 @@
   [(fn [v _] (and (not (nil? v))
                   (sequential? v)
                   (> (count v) 0)))
-   :msg (or msg (fn [v _] (str "'" v "' must be a list containing at least one item")))
+   :msg (or msg (str "must be a list containing at least one item"))
    :when when-fn])
 
 (defn list-of-objects
@@ -90,7 +90,7 @@
                                        (when (seq errors)
                                          [i errors]))))
                       vs)
-                (str "'" vs "' is not a list of objects"))))
+                "not a list of objects")))
    :when when-fn])
 
 ;;
