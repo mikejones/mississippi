@@ -13,20 +13,20 @@
 (defn numeric
   "Validates given value is an instance of Number."
   [& {msg :msg when-fn :when}]
-  [(fn [v _] (instance? Number v))
+  [(fn [v] (instance? Number v))
    :msg (or msg "not a number")
    :when when-fn])
 
 (defn required
   [& {msg :msg when-fn :when}]
-  [(fn [v _] (not (nil? v)))
+  [(comp not nil?)
    :msg (or msg "required")
    :when when-fn])
 
 (defn member-of
   "Validates the value v is contained in s (will be coerced to a set)."
   [s & {msg :msg when-fn :when}]
-  [(fn [v _] (contains? (set s) v))
+  [#(contains? (set s) %)
    :msg (or msg (str "not a member of " (to-sentence (sort s))))
    :when when-fn])
 
@@ -34,7 +34,7 @@
   "Validates the value v falls between the range of start and end."
   [start end & {msg :msg when-fn :when}]
   (let [range (range start end)]
-    [(fn [v _] (contains? (set range) v))
+    [#(contains? (set range) %)
      :when when-fn
      :msg  (or msg
                (str "does not fall between " (first range) " and " (last range)))]))
@@ -42,7 +42,7 @@
 (defn subset-of
   "Validates the value v is a subset of s. Both v and s will be coerced to sets."
   [s & {msg :msg when-fn :when}]
-  [(fn [v _] (subset? (set v) (set s)))
+  [#(subset? (set %) (set s))
    :msg (or msg (str "not a subset of " (to-sentence (sort s))))
    :when when-fn])
 
@@ -51,7 +51,7 @@
   optional match-fn, defaulting to re-find."
   [re & {msg :msg when-fn :when match-fn :match-fn}]
   (let [match-fn (or match-fn re-find)]
-    [(fn [v _] (->> v str (match-fn re) nil? not))
+    [(fn [v] (->> v str (match-fn re) nil? not))
      :msg (or msg (str "does not match pattern of '" re "'"))
      :when when-fn]))
 
@@ -61,16 +61,16 @@
 (defn matches-email
   "Validates the String value v matches a basic email pattern."
   [& {msg :msg when-fn :when}]
-  [(fn [v _] (->> v str (re-find email-regex) nil? not))
+  [(fn [v] (->> v str (re-find email-regex) nil? not))
    :msg (or msg (str "invalid email address"))
    :when when-fn])
 
 (defn non-empty-list
   "Validates the attribute contains a non-empty list."
   [& {msg :msg when-fn :when}]
-  [(fn [v _] (and (not (nil? v))
-                  (sequential? v)
-                  (> (count v) 0)))
+  [(fn [v] (and (not (nil? v))
+                (sequential? v)
+                (> (count v) 0)))
    :msg (or msg (str "must be a list containing at least one item"))
    :when when-fn])
 
@@ -78,11 +78,11 @@
   "Validates the attribute contains a list of objects that match the provided validations.
    Can be nested as required."
   [child-validations-map & {msg :msg when-fn :when}]
-  [(fn [vs _]
+  [(fn [vs]
      (and (sequential? vs)
           (every? #(valid? (validate % child-validations-map)) vs)))
    :msg (or msg
-            (fn [vs _]
+            (fn [vs]
               (if (sequential? vs)
                 (into {}
                       (map-indexed (fn [i o]
@@ -108,9 +108,9 @@
 (defn- call-arities
   [f value subject]
   (try
-    (f value subject)
+    (f value)
     (catch clojure.lang.ArityException _
-      (f value))))
+      (f value subject))))
 
 (defn- apply-validation
   [value subject [validate-fn & {when-fn :when msg :msg}]]
@@ -169,7 +169,7 @@
 
   A possible validations map could be:
 
-  {:a [(fn [v _] (not (nil? v))) :msg \"you forgot to supply a value\"] }
+  {:a [(comp not nil?) :msg \"you forgot to supply a value\"] }
 
   A number of builders for common validations have been provided they accept
   the same options and are applied in the same way.
