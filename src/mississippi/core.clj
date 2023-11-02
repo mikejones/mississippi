@@ -26,7 +26,7 @@
 (defn member-of
   "Validates the value v is contained in s (will be coerced to a set)."
   [s & {msg :msg when-fn :when}]
-  [#(contains? (set s) %)
+  [(fn [v] (contains? (set s) v))
    :msg (or msg (str "not a member of " (to-sentence (sort s))))
    :when when-fn])
 
@@ -34,7 +34,7 @@
   "Validates the value v falls between the range of start and end."
   [start end & {msg :msg when-fn :when}]
   (let [range (range start end)]
-    [#(contains? (set range) %)
+    [(fn [v] (contains? (set range) v))
      :when when-fn
      :msg  (or msg
                (str "does not fall between " (first range) " and " (last range)))]))
@@ -42,7 +42,7 @@
 (defn subset-of
   "Validates the value v is a subset of s. Both v and s will be coerced to sets."
   [s & {msg :msg when-fn :when}]
-  [#(subset? (set %) (set s))
+  [(fn [v] (subset? (set v) (set s)))
    :msg (or msg (str "not a subset of " (to-sentence (sort s))))
    :when when-fn])
 
